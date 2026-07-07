@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_new %}Tambah Pengguna{% else %}Edit Pengguna{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="#" class="text-decoration-none">Sistem</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'pengguna_list' %}" class="text-decoration-none">Pengguna</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{% if is_new %}Tambah{% else %}Edit{% endif %}</li>
+{% endblock %}
+
+{% block page_title %}{% if is_new %}Tambah Pengguna Baru{% else %}Edit Pengguna{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8">
+        <div class="card card-premium">
+            <div class="card-header-premium"><i class="fa-solid fa-user-plus text-primary me-2"></i> Formulir Pengguna Sistem</div>
+            <div class="card-body p-4">
+                <form method="POST" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.username.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Username login <span class="text-danger">*</span></label>
+                            {{ form.username }}
+                            <div class="invalid-feedback">Username login harus diisi.</div>
+                        </div>
+                        
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.password.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Password {% if is_new %}<span class="text-danger">*</span>{% endif %}</label>
+                            {{ form.password }}
+                            {% if not is_new %}
+                                <small class="text-muted d-block mt-1">Kosongkan jika tidak ingin mengubah password.</small>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Nama Depan <span class="text-danger">*</span></label>
+                            {{ form.first_name }}
+                            <div class="invalid-feedback">Nama depan harus diisi.</div>
+                        </div>
+                        
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Nama Belakang / Gelar</label>
+                            {{ form.last_name }}
+                        </div>
+                        
+                        <div class="col-12">
+                            <label for="{{ form.email.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Alamat Email</label>
+                            {{ form.email }}
+                        </div>
+                        
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.role.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Peran Akses (Role) <span class="text-danger">*</span></label>
+                            {{ form.role }}
+                        </div>
+                        
+                        <div class="col-12 col-sm-6">
+                            <label for="{{ form.unit_kerja.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Unit Kerja / Bidang</label>
+                            {{ form.unit_kerja }}
+                            <small class="text-muted">Contoh: Pengawas Bidang Perumahan</small>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="form-check mt-2">
+                                {{ form.status_aktif }}
+                                <label class="form-check-label font-weight-bold" for="{{ form.status_aktif.id_for_label }}">
+                                    Akun Aktif (Dapat Login ke Sistem)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4 border-top pt-3">
+                        <a href="{% url 'pengguna_list' %}" class="btn btn-outline-secondary px-4" style="border-radius: 6px;">Batal</a>
+                        <button type="submit" class="btn btn-primary px-4" style="background-color: var(--primary-color); border-color: var(--primary-color); border-radius: 6px;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Simpan Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (() => {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+</script>
+{% endblock %}

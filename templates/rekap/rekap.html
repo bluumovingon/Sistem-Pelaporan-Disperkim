@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}Rekapitulasi Laporan{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active" aria-current="page">Rekapitulasi</li>
+{% endblock %}
+
+{% block page_title %}Rekapitulasi Laporan Terverifikasi{% endblock %}
+
+{% block content %}
+<!-- Filtering Card -->
+<div class="card card-premium mb-4">
+    <div class="card-body">
+        <form method="GET" action="{% url 'rekap' %}" id="rekapFilterForm" class="row g-3">
+            <div class="col-12 col-md-3">
+                <label for="bulan" class="form-label" style="font-weight: 600; color: #4b5563;">Bulan Laporan</label>
+                <select name="bulan" id="bulan" class="form-select">
+                    <option value="">-- Semua Bulan --</option>
+                    {% for m in all_bulans %}
+                        <option value="{{ m }}" {% if filters.bulan == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-12 col-md-5">
+                <label for="kegiatan" class="form-label" style="font-weight: 600; color: #4b5563;">Judul Kegiatan</label>
+                <select name="kegiatan" id="kegiatan" class="form-select">
+                    <option value="">-- Semua Kegiatan --</option>
+                    {% for keg in all_kegiatans %}
+                        <option value="{{ keg.id }}" {% if filters.kegiatan == keg.id|stringformat:"i" %}selected{% endif %}>{{ keg.judul_kegiatan }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-12 col-md-4">
+                <label for="pengawas" class="form-label" style="font-weight: 600; color: #4b5563;">Pengawas Lapangan</label>
+                <select name="pengawas" id="pengawas" class="form-select">
+                    <option value="">-- Semua Pengawas --</option>
+                    {% for pgw in all_pengawas %}
+                        <option value="{{ pgw.id }}" {% if filters.pengawas == pgw.id|stringformat:"i" %}selected{% endif %}>{{ pgw.first_name }} {{ pgw.last_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-12 d-flex justify-content-end gap-2 mt-4">
+                <a href="{% url 'rekap' %}" class="btn btn-outline-secondary" style="border-radius: 6px;"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
+                <button type="submit" class="btn btn-primary" style="background-color: var(--primary-color); border-color: var(--primary-color); border-radius: 6px;"><i class="fa-solid fa-filter me-1"></i> Saring Data</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Recap table & export actions -->
+<div class="card card-premium">
+    <div class="card-header-premium d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span><i class="fa-solid fa-file-invoice text-primary me-2"></i> Laporan Pengawasan Terverifikasi</span>
+        
+        <!-- Export buttons -->
+        <div class="d-flex gap-1">
+            <button id="btnExportExcel" class="btn btn-sm btn-success border-0 px-3" style="border-radius: 6px;" {% if not laporans %}disabled{% endif %}>
+                <i class="fa-solid fa-file-excel me-1"></i> Ekspor ke Excel (.xlsx)
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">No</th>
+                        <th>Pengawas</th>
+                        <th>Kegiatan</th>
+                        <th>PPTK</th>
+                        <th>Bulan</th>
+                        <th>Progres Pelaksanaan</th>
+                        <th>Kendala</th>
+                        <th class="text-end pe-4">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if laporans %}
+                        {% for lap in laporans %}
+                            <tr>
+                                <td class="ps-4 text-muted">{{ forloop.counter }}</td>
+                                <td>
+                                    <div class="font-weight-bold text-dark">{{ lap.pengawas.first_name }} {{ lap.pengawas.last_name }}</div>
+                                    <small class="text-muted" style="font-size: 0.725rem;">{{ lap.pengawas.unit_kerja }}</small>
+                                </td>
+                                <td>
+                                    <div class="font-weight-bold text-dark">{{ lap.kegiatan.judul_kegiatan }}</div>
+                                    <small class="text-muted" style="font-size: 0.725rem;">Tahun: {{ lap.kegiatan.tahun }}</small>
+                                </td>
+                                <td>{{ lap.kegiatan.pptk.nama }}</td>
+                                <td>{{ lap.bulan_laporan }}</td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 200px;" title="{{ lap.tahapan_pelaksanaan }}">
+                                        {{ lap.tahapan_pelaksanaan }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 150px;" title="{{ lap.kendala }}">
+                                        {{ lap.kendala|default:"-" }}
+                                    </div>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="d-flex justify-content-end gap-1">
+                                        <a href="{% url 'laporan_detail' lap.pk %}" class="btn btn-sm btn-light border" style="border-radius: 6px;" title="Lihat"><i class="fa-solid fa-eye text-primary"></i> Detail</a>
+                                        <a href="{% url 'rekap_pdf' lap.pk %}" target="_blank" class="btn btn-sm btn-light border" style="border-radius: 6px;" title="Cetak"><i class="fa-solid fa-print text-secondary"></i> Cetak</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-file-circle-xmark fs-3 mb-2 d-block"></i>
+                                Tidak ada data laporan terverifikasi yang memenuhi kriteria saringan.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Handles redirect to Excel export with current filter parameters
+    document.getElementById('btnExportExcel').addEventListener('click', function() {
+        const bul = document.getElementById('bulan').value;
+        const keg = document.getElementById('kegiatan').value;
+        const pgw = document.getElementById('pengawas').value;
+        
+        let url = "{% url 'rekap_excel' %}?";
+        if (bul) url += `bulan=${encodeURIComponent(bul)}&`;
+        if (keg) url += `kegiatan=${encodeURIComponent(keg)}&`;
+        if (pgw) url += `pengawas=${encodeURIComponent(pgw)}&`;
+        
+        window.location.href = url;
+    });
+</script>
+{% endblock %}

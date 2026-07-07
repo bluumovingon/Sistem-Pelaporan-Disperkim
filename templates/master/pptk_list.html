@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Kelola PPTK{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="#" class="text-decoration-none">Master Data</a></li>
+    <li class="breadcrumb-item active" aria-current="page">PPTK</li>
+{% endblock %}
+
+{% block page_title %}Manajemen Data PPTK{% endblock %}
+
+{% block content %}
+<div class="card card-premium">
+    <div class="card-header-premium d-flex align-items-center justify-content-between">
+        <span><i class="fa-solid fa-user-tie text-primary me-2"></i> Daftar Pejabat Pelaksana Teknis Kegiatan (PPTK)</span>
+        <a href="{% url 'pptk_tambah' %}" class="btn btn-sm btn-primary" style="background-color: var(--primary-color); border-color: var(--primary-color); border-radius: 6px;">
+            <i class="fa-solid fa-plus me-1"></i> Tambah PPTK
+        </a>
+    </div>
+    
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">No</th>
+                        <th>Nama Lengkap</th>
+                        <th>Jabatan</th>
+                        <th>Unit Kerja/Bidang</th>
+                        <th class="text-end pe-4">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if pptks %}
+                        {% for pptk in pptks %}
+                            <tr>
+                                <td class="ps-4 text-muted">{{ forloop.counter }}</td>
+                                <td class="font-weight-bold text-dark">{{ pptk.nama }}</td>
+                                <td>{{ pptk.jabatan }}</td>
+                                <td>{{ pptk.unit_kerja }}</td>
+                                <td class="text-end pe-4">
+                                    <a href="{% url 'pptk_edit' pptk.pk %}" class="btn btn-sm btn-light border" style="border-radius: 6px;" title="Edit"><i class="fa-solid fa-pen-to-square text-warning"></i> Edit</a>
+                                    <a href="{% url 'pptk_hapus' pptk.pk %}" class="btn btn-sm btn-light border ms-1" style="border-radius: 6px;" title="Hapus" onclick="return confirm('Apakah Anda yakin ingin menghapus data PPTK ini?')"><i class="fa-solid fa-trash text-danger"></i></a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-user-slash fs-3 mb-2 d-block"></i>
+                                Data PPTK masih kosong.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

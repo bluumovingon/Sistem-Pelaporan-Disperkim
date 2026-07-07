@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_new %}Buat Laporan Baru{% else %}Edit Laporan{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="{% url 'laporan_list' %}" class="text-decoration-none">Laporan</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{% if is_new %}Buat{% else %}Edit{% endif %}</li>
+{% endblock %}
+
+{% block page_title %}{% if is_new %}Buat Laporan Pengawasan Baru{% else %}Edit Laporan Pengawasan{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-12 col-xl-10">
+        
+        <!-- Catatan Revisi jika ada -->
+        {% if not is_new and laporan.status == 'perlu_revisi' %}
+            <div class="alert alert-danger border-start border-danger border-4 shadow-sm mb-4" role="alert" style="border-radius: 8px;">
+                <h5 class="alert-heading font-weight-bold mb-2"><i class="fa-solid fa-circle-exclamation me-2"></i> Perlu Revisi!</h5>
+                <p class="mb-0" style="font-size: 0.925rem;">
+                    <strong>Catatan Penolakan dari Admin:</strong><br>
+                    <span class="text-dark bg-white d-block p-3 rounded mt-2 border border-danger-subtle">{{ laporan.catatan_revisi }}</span>
+                </p>
+            </div>
+        {% endif %}
+        
+        <div class="card card-premium">
+            <div class="card-header-premium"><i class="fa-solid fa-file-signature text-primary me-2"></i> Formulir Laporan Pengawasan</div>
+            
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data" id="laporanForm" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-4">
+                        <!-- Kegiatan -->
+                        <div class="col-12 col-md-8">
+                            <label for="{{ form.kegiatan.id_for_label }}" class="form-label" style="font-weight: 600; color: #4b5563;">Pilih Kegiatan / Proyek <span class="text-danger">*</span></label>
+                            {{ form.kegiatan }}
+                            <div class="invalid-feedback">Silakan pilih kegiatan.</div>
+                            <small class="text-muted d-block mt-1">Hanya menampilkan kegiatan aktif tahun anggaran saat ini.</small>
+                        </div>
+                        
+                        <!-- Bulan Laporan -->
+                        <div class="col-12 col-md-4">
+                            <label for="{{ form.bulan_laporan.id_for_label }}" class="form-label" style="font-weight: 600; color: #4b5563;">Bulan Laporan <span class="text-danger">*</span></label>
+                            {{ form.bulan_laporan }}
+                            <div class="invalid-feedback">Silakan pilih bulan laporan.</div>
+                        </div>
+                        
+                        <!-- Tahapan Pelaksanaan -->
+                        <div class="col-12">
+                            <label for="{{ form.tahapan_pelaksanaan.id_for_label }}" class="form-label" style="font-weight: 600; color: #4b5563;">Progres / Tahapan Pelaksanaan <span class="text-danger">*</span></label>
+                            {{ form.tahapan_pelaksanaan }}
+                            <div class="invalid-feedback">Silakan isi keterangan progres pelaksanaan.</div>
+                            <small class="text-muted d-block mt-1">Uraikan progres fisik pekerjaan saat ini (misal: galian pondasi 80%, pemasangan batu kali, dll.)</small>
+                        </div>
+                        
+                        <!-- Kendala -->
+                        <div class="col-12">
+                            <label for="{{ form.kendala.id_for_label }}" class="form-label" style="font-weight: 600; color: #4b5563;">Kendala Kegiatan</label>
+                            {{ form.kendala }}
+                            <small class="text-muted d-block mt-1">Kosongkan jika tidak ada kendala teknis maupun non-teknis di lapangan.</small>
+                        </div>
+                        
+                        <!-- File Upload Section -->
+                        <div class="col-12">
+                            <hr class="my-4">
+                            <h5 class="mb-3 font-weight-bold text-dark"><i class="fa-regular fa-images text-primary me-2"></i> Dokumentasi Lapangan</h5>
+                            
+                            <!-- Existing Images (Edit mode only) -->
+                            {% if not is_new and dokumentasis %}
+                                <label class="form-label d-block mb-3" style="font-weight: 600; color: #4b5563;">File Dokumentasi yang Sudah Ada:</label>
+                                <div class="photo-gallery mb-4">
+                                    {% for doc in dokumentasis %}
+                                        <div class="photo-card">
+                                            <!-- Simple lightbox/view fallback -->
+                                            <a href="{{ doc.file.url }}" target="_blank">
+                                                <img src="{{ doc.file.url }}" class="photo-img" alt="Dokumentasi">
+                                            </a>
+                                            <div class="photo-caption d-flex align-items-center justify-content-between p-2">
+                                                <span class="text-truncate" style="max-width: 120px;" title="{{ doc.keterangan }}">{{ doc.keterangan|default:"Tanpa deskripsi" }}</span>
+                                                <a href="{% url 'dokumentasi_hapus' doc.pk %}" class="btn btn-sm btn-link text-danger p-0" onclick="return confirm('Apakah Anda yakin ingin menghapus dokumentasi ini?')" title="Hapus"><i class="fa-solid fa-trash-can"></i></a>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Multi-file drag and drop UI -->
+                            <label class="form-label" style="font-weight: 600; color: #4b5563;">Unggah File Baru (Foto / Dokumen Pendukung)</label>
+                            
+                            <div class="upload-container" id="uploadContainer">
+                                <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                                <h6 class="font-weight-bold mb-1">Pilih beberapa file foto atau seret ke sini</h6>
+                                <p class="text-muted mb-3" style="font-size: 0.8rem;">Format: JPG, JPEG, PNG, PDF (Maks. 5MB per file)</p>
+                                <input type="file" name="files" id="filesInput" multiple class="d-none" accept=".jpg,.jpeg,.png,.pdf">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('filesInput').click()">Pilih File</button>
+                            </div>
+                            
+                            <!-- File Previews Container -->
+                            <div id="filePreviews" class="row g-3 mt-3"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-5 border-top pt-4">
+                        <a href="{% url 'laporan_list' %}" class="btn btn-outline-secondary px-4 py-2" style="border-radius: 8px;">Batal</a>
+                        
+                        <button type="submit" name="action" value="draft" class="btn btn-light border px-4 py-2" style="border-radius: 8px;">
+                            <i class="fa-regular fa-floppy-disk me-1"></i> Simpan Draft
+                        </button>
+                        
+                        <button type="submit" name="action" value="diajukan" class="btn btn-primary px-4 py-2" style="background-color: var(--primary-color); border-color: var(--primary-color); border-radius: 8px;" onclick="return confirm('Apakah Anda yakin ingin langsung mengajukan laporan ini ke Admin?')">
+                            <i class="fa-solid fa-paper-plane me-1"></i> Ajukan Laporan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const uploadContainer = document.getElementById('uploadContainer');
+    const filesInput = document.getElementById('filesInput');
+    const filePreviews = document.getElementById('filePreviews');
+
+    // Drag events
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadContainer.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            uploadContainer.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadContainer.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            uploadContainer.classList.remove('dragover');
+        }, false);
+    });
+
+    uploadContainer.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        filesInput.files = files;
+        handleFiles(files);
+    });
+
+    filesInput.addEventListener('change', (e) => {
+        handleFiles(filesInput.files);
+    });
+
+    function handleFiles(files) {
+        filePreviews.innerHTML = ''; // reset preview
+        
+        if (files.length === 0) return;
+        
+        Array.from(files).forEach((file, index) => {
+            const isImage = file.type.startsWith('image/');
+            const col = document.createElement('div');
+            col.className = 'col-12 col-sm-6 col-md-4';
+            
+            const card = document.createElement('div');
+            card.className = 'card h-100 border border-light-subtle shadow-sm p-3 position-relative';
+            card.style.borderRadius = '8px';
+            
+            let previewHTML = '';
+            if (isImage) {
+                // Read and preview image
+                const reader = new FileReader();
+                const imgId = `preview-img-${index}`;
+                
+                reader.onload = function(e) {
+                    document.getElementById(imgId).src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+                
+                previewHTML = `<img id="${imgId}" src="" class="card-img-top mb-2" style="height: 120px; object-fit: cover; border-radius: 6px;">`;
+            } else {
+                // Document file icon
+                previewHTML = `<div class="d-flex align-items-center justify-content-center bg-light text-muted mb-2" style="height: 120px; border-radius: 6px; font-size: 2.5rem;">
+                                    <i class="fa-solid fa-file-pdf text-danger"></i>
+                               </div>`;
+            }
+            
+            card.innerHTML = `
+                ${previewHTML}
+                <div class="card-body p-0">
+                    <span class="d-block text-truncate font-weight-bold text-dark" style="font-size: 0.8rem;" title="${file.name}">${file.name}</span>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.725rem;">${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+                    
+                    <input type="text" name="file_descriptions" class="form-control form-control-sm" placeholder="Tambahkan keterangan/keterangan foto..." style="font-size: 0.75rem;">
+                </div>
+            `;
+            
+            col.appendChild(card);
+            filePreviews.appendChild(col);
+        });
+    }
+
+    // Bootstrap validation script
+    (() => {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+</script>
+{% endblock %}

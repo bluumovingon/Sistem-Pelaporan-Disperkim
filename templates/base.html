@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SIPAWAS{% endblock %} - DISPERKIM</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <!-- Custom Style CSS -->
+    {% load static %}
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-brand d-flex align-items-center justify-content-between">
+            <span><i class="fa-solid fa-helmet-safety text-warning me-2"></i> SIPAWAS</span>
+            <button class="btn btn-link text-white d-lg-none" id="sidebarClose"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <div class="sidebar-menu">
+            <div class="sidebar-heading">Utama</div>
+            <a href="{% url 'dashboard' %}" class="sidebar-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fa-solid fa-gauge"></i> Dashboard
+            </a>
+            <a href="{% url 'laporan_list' %}" class="sidebar-item {% if 'laporan' in request.path and 'master' not in request.path %}active{% endif %}">
+                <i class="fa-solid fa-file-invoice"></i> Laporan Kegiatan
+            </a>
+            
+            {% if request.user.role != 'pengawas' %}
+                <div class="sidebar-heading mt-3">Pelaporan & Rekap</div>
+                <a href="{% url 'rekap' %}" class="sidebar-item {% if request.resolver_match.url_name == 'rekap' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-line"></i> Rekapitulasi Laporan
+                </a>
+            {% endif %}
+            
+            {% if request.user.role == 'admin' or request.user.role == 'super_admin' %}
+                <div class="sidebar-heading mt-3">Master Data</div>
+                <a href="{% url 'pptk_list' %}" class="sidebar-item {% if 'pptk' in request.path %}active{% endif %}">
+                    <i class="fa-solid fa-user-tie"></i> Master PPTK
+                </a>
+                <a href="{% url 'kegiatan_list' %}" class="sidebar-item {% if 'kegiatan' in request.path %}active{% endif %}">
+                    <i class="fa-solid fa-folder-open"></i> Master Kegiatan
+                </a>
+            {% endif %}
+            
+            {% if request.user.role == 'super_admin' %}
+                <div class="sidebar-heading mt-3">Sistem</div>
+                <a href="{% url 'pengguna_list' %}" class="sidebar-item {% if 'pengguna' in request.path %}active{% endif %}">
+                    <i class="fa-solid fa-users-gear"></i> Kelola Pengguna
+                </a>
+            {% endif %}
+            
+            <div class="sidebar-heading mt-3">Akun</div>
+            <a href="{% url 'notifikasi_list' %}" class="sidebar-item {% if request.resolver_match.url_name == 'notifikasi_list' %}active{% endif %}">
+                <i class="fa-solid fa-bell"></i> Notifikasi
+                {% if unread_notifications_count > 0 %}
+                    <span class="badge bg-danger float-end rounded-pill">{{ unread_notifications_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'logout' %}" class="sidebar-item text-danger-hover">
+                <i class="fa-solid fa-right-from-bracket text-danger"></i> Keluar
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper" id="mainWrapper">
+        
+        <!-- Top Navbar -->
+        <nav class="top-navbar d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link text-dark p-0 me-3 d-lg-none" id="sidebarToggle"><i class="fa-solid fa-bars fs-4"></i></button>
+                <h5 class="mb-0 font-weight-bold text-primary d-none d-sm-block">Dinas Perumahan dan Permukiman</h5>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <!-- Notifications Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary border-0 rounded-circle position-relative p-2" type="button" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="width: 40px; height: 40px;">
+                        <i class="fa-regular fa-bell fs-5"></i>
+                        {% if unread_notifications_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                                {{ unread_notifications_count }}
+                            </span>
+                        {% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-0" aria-labelledby="notifDropdown" style="width: 320px; border-radius: 10px; overflow: hidden;">
+                        <li class="dropdown-header bg-primary text-white py-3 d-flex align-items-center justify-content-between">
+                            <span class="font-weight-bold" style="font-size: 0.95rem;">Notifikasi Anda</span>
+                            {% if unread_notifications_count > 0 %}
+                                <a href="{% url 'notifikasi_baca_semua' %}" class="text-white text-decoration-none" style="font-size: 0.75rem;"><i class="fa-solid fa-check-double"></i> Tandai semua</a>
+                            {% endif %}
+                        </li>
+                        <div style="max-height: 250px; overflow-y: auto;">
+                            {% if unread_notifications_count > 0 %}
+                                {% for notif in latest_unread_notifications %}
+                                    <li>
+                                        <a class="dropdown-item py-3 px-3 border-bottom d-flex align-items-start gap-2 text-wrap" href="{% url 'notifikasi_baca' notif.pk %}" style="font-size: 0.85rem;">
+                                            <div class="text-primary mt-1"><i class="fa-solid fa-circle-dot"></i></div>
+                                            <div>
+                                                <div class="font-weight-bold text-dark">{{ notif.judul }}</div>
+                                                <div class="text-muted mt-1" style="font-size: 0.775rem;">{{ notif.pesan }}</div>
+                                                <small class="text-secondary mt-1 d-block" style="font-size: 0.7rem;">{{ notif.created_at|timesince }} yang lalu</small>
+                                            </div>
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            {% else %}
+                                <li class="py-4 text-center text-muted">
+                                    <i class="fa-regular fa-bell-slash fs-4 mb-2 d-block"></i>
+                                    Tidak ada notifikasi baru
+                                </li>
+                            {% endif %}
+                        </div>
+                        <li class="bg-light text-center py-2 border-top">
+                            <a class="dropdown-item text-primary font-weight-bold py-1" href="{% url 'notifikasi_list' %}" style="font-size: 0.8rem;">Lihat Semua Notifikasi</a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="vr d-none d-sm-block"></div>
+                
+                <!-- Profile Menu -->
+                <div class="dropdown">
+                    <button class="btn btn-link text-decoration-none dropdown-toggle text-dark p-0 d-flex align-items-center gap-2" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-weight: 600; font-size: 0.95rem;">
+                            {{ request.user.username|slice:":2"|upper }}
+                        </div>
+                        <div class="text-start d-none d-md-block">
+                            <div class="font-weight-bold" style="font-size: 0.875rem; line-height: 1.2;">{{ request.user.first_name }} {{ request.user.last_name }}</div>
+                            <small class="text-muted" style="font-size: 0.75rem;">{{ request.user.get_role_display }}</small>
+                        </div>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="profileDropdown" style="border-radius: 8px;">
+                        <li class="px-3 py-2 border-bottom d-md-none">
+                            <div class="font-weight-bold" style="font-size: 0.875rem;">{{ request.user.first_name }} {{ request.user.last_name }}</div>
+                            <small class="text-muted" style="font-size: 0.75rem;">{{ request.user.get_role_display }}</small>
+                        </li>
+                        <li><a class="dropdown-item py-2" href="{% url 'notifikasi_list' %}"><i class="fa-solid fa-bell me-2 text-muted"></i> Notifikasi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item py-2 text-danger" href="{% url 'logout' %}"><i class="fa-solid fa-right-from-bracket me-2"></i> Keluar</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        
+        <!-- Breadcrumb & Page Info -->
+        <div class="px-4 pt-4">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm mb-4" role="alert" style="border-radius: 8px;">
+                        <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% else %}fa-triangle-exclamation text-danger{% endif %} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none">SIPAWAS</a></li>
+                    {% block breadcrumb %}{% endblock %}
+                </ol>
+            </nav>
+            <h3 class="font-weight-bold text-dark mb-0">{% block page_title %}{% endblock %}</h3>
+        </div>
+        
+        <!-- Content Body -->
+        <div class="content-body">
+            {% block content %}{% endblock %}
+        </div>
+        
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Sidebar Toggle Script -->
+    <script>
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarClose = document.getElementById('sidebarClose');
+        const sidebar = document.getElementById('sidebar');
+        
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.add('show');
+            });
+        }
+        
+        if (sidebarClose) {
+            sidebarClose.addEventListener('click', () => {
+                sidebar.classList.remove('show');
+            });
+        }
+        
+        // Hide sidebar if screen is resized beyond tablet
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 992) {
+                sidebar.classList.remove('show');
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
