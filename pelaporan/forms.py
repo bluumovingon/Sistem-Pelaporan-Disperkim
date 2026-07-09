@@ -1,5 +1,5 @@
 from django import forms
-from pelaporan.models import User, PPTK, Kegiatan, Laporan, Dokumentasi
+from pelaporan.models import User, Kegiatan, Laporan, Dokumentasi
 
 class LaporanForm(forms.ModelForm):
     class Meta:
@@ -13,17 +13,6 @@ class LaporanForm(forms.ModelForm):
         }
 
 
-class PPTKForm(forms.ModelForm):
-    class Meta:
-        model = PPTK
-        fields = ['nama', 'jabatan', 'unit_kerja']
-        widgets = {
-            'nama': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama Lengkap Beserta Gelar'}),
-            'jabatan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: Kasi Perumahan'}),
-            'unit_kerja': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: Bidang Perumahan'}),
-        }
-
-
 class KegiatanForm(forms.ModelForm):
     class Meta:
         model = Kegiatan
@@ -33,6 +22,11 @@ class KegiatanForm(forms.ModelForm):
             'pptk': forms.Select(attrs={'class': 'form-select'}),
             'tahun': forms.NumberInput(attrs={'class': 'form-control'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['pptk'].queryset = User.objects.filter(role='pptk')
+        self.fields['pptk'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name} ({obj.jabatan})"
 
 
 class UserForm(forms.ModelForm):
@@ -44,13 +38,14 @@ class UserForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'role', 'unit_kerja', 'status_aktif']
+        fields = ['username', 'first_name', 'last_name', 'email', 'role', 'jabatan', 'unit_kerja', 'status_aktif']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'role': forms.Select(attrs={'class': 'form-select'}),
+            'jabatan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: Kasi Perumahan'}),
             'unit_kerja': forms.TextInput(attrs={'class': 'form-control'}),
             'status_aktif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

@@ -199,17 +199,11 @@
                 <td>{{ laporan.kegiatan.tahun }}</td>
             </tr>
             <tr>
-                <th>Pejabat Pelaksana Teknis (PPTK)</th>
+                <th>PPTK Pelapor / Penanggung Jawab</th>
                 <td>
-                    <strong>{{ laporan.kegiatan.pptk.nama }}</strong><br>
-                    Jabatan: {{ laporan.kegiatan.pptk.jabatan }}
-                </td>
-            </tr>
-            <tr>
-                <th>Pengawas Lapangan</th>
-                <td>
-                    {{ laporan.pengawas.first_name }} {{ laporan.pengawas.last_name }}<br>
-                    Unit Kerja: {{ laporan.pengawas.unit_kerja }}
+                    <strong>{{ laporan.pptk.first_name }} {{ laporan.pptk.last_name }}</strong><br>
+                    Jabatan: {{ laporan.pptk.jabatan }}<br>
+                    Unit Kerja: {{ laporan.pptk.unit_kerja }}
                 </td>
             </tr>
             <tr>
@@ -246,17 +240,17 @@
             <div class="row">
                 <div class="col-6 text-center">
                     <p class="mb-0">Melaporkan,</p>
-                    <p class="font-weight-bold">Pengawas Lapangan</p>
+                    <p class="font-weight-bold">PPTK Pelapor</p>
                     <div class="sig-space"></div>
-                    <p class="mb-0 font-weight-bold" style="text-decoration: underline;">{{ laporan.pengawas.first_name }} {{ laporan.pengawas.last_name }}</p>
-                    <p class="text-secondary" style="font-size: 0.85rem;">{{ laporan.pengawas.unit_kerja }}</p>
+                    <p class="mb-0 font-weight-bold" style="text-decoration: underline;">{{ laporan.pptk.first_name }} {{ laporan.pptk.last_name }}</p>
+                    <p class="text-secondary" style="font-size: 0.85rem;">{{ laporan.pptk.jabatan }}</p>
                 </div>
                 <div class="col-6 text-center">
-                    <p class="mb-0">Mengetahui,</p>
-                    <p class="font-weight-bold">Pejabat Pelaksana Teknis Kegiatan (PPTK)</p>
+                    <p class="mb-0">Mengetahui/Menyetujui,</p>
+                    <p class="font-weight-bold">Admin Dinas (Verifikator)</p>
                     <div class="sig-space"></div>
-                    <p class="mb-0 font-weight-bold" style="text-decoration: underline;">{{ laporan.kegiatan.pptk.nama }}</p>
-                    <p class="text-secondary" style="font-size: 0.85rem;">{{ laporan.kegiatan.pptk.jabatan }}</p>
+                    <p class="mb-0 font-weight-bold" style="text-decoration: underline;">......................................................</p>
+                    <p class="text-secondary" style="font-size: 0.85rem;">NIP. .................................................</p>
                 </div>
             </div>
         </div>

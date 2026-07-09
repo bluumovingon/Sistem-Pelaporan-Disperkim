@@ -5,7 +5,7 @@ from django.contrib import messages
 def role_required(*allowed_roles):
     """
     Decorator to restrict access to views based on user roles.
-    Allowed roles: 'super_admin', 'admin', 'pengawas', 'pimpinan'.
+    Allowed roles: 'super_admin', 'admin', 'pptk', 'pimpinan'.
     """
     def decorator(view_func):
         def _wrapped_view(request, *args, **kwargs):

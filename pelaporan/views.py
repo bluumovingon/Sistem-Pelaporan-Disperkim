@@ -10,8 +10,8 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
-from pelaporan.models import User, PPTK, Kegiatan, Laporan, Dokumentasi, RiwayatStatus, Notifikasi
-from pelaporan.forms import LaporanForm, PPTKForm, KegiatanForm, UserForm
+from pelaporan.models import User, Kegiatan, Laporan, Dokumentasi, RiwayatStatus, Notifikasi
+from pelaporan.forms import LaporanForm, KegiatanForm, UserForm
 from pelaporan.decorators import role_required
 
 # --- Auth & Redirects ---
@@ -57,9 +57,9 @@ def logout_view(request):
 def dashboard_view(request):
     user = request.user
     
-    if user.role == 'pengawas':
-        # Dashboard Pengawas Lapangan
-        laporans = Laporan.objects.filter(pengawas=user)
+    if user.role == 'pptk':
+        # Dashboard PPTK
+        laporans = Laporan.objects.filter(pptk=user)
         
         stats = {
             'total': laporans.count(),
@@ -75,7 +75,7 @@ def dashboard_view(request):
             'stats': stats,
             'recent_laporans': recent_laporans,
         }
-        return render(request, 'dashboard/pengawas.html', context)
+        return render(request, 'dashboard/pptk.html', context)
         
     else:
         # Dashboard Admin / Pimpinan / Super Admin
@@ -96,15 +96,15 @@ def dashboard_view(request):
         status_chart_data = list(laporans.values('status').annotate(count=Count('id')))
         # 2. Reports by Month
         month_chart_data = list(laporans.values('bulan_laporan').annotate(count=Count('id')))
-        # 3. Reports by Pengawas
-        pengawas_chart_data = list(laporans.values('pengawas__first_name', 'pengawas__last_name').annotate(count=Count('id')))
+        # 3. Reports by PPTK
+        pptk_chart_data = list(laporans.values('pptk__first_name', 'pptk__last_name').annotate(count=Count('id')))
         
         context = {
             'stats': stats,
             'pending_reports': pending_reports[:10],
             'status_chart_data': status_chart_data,
             'month_chart_data': month_chart_data,
-            'pengawas_chart_data': pengawas_chart_data,
+            'pptk_chart_data': pptk_chart_data,
         }
         return render(request, 'dashboard/admin.html', context)
 
@@ -116,8 +116,8 @@ def laporan_list_view(request):
     user = request.user
     
     # Base query based on roles
-    if user.role == 'pengawas':
-        laporans = Laporan.objects.filter(pengawas=user)
+    if user.role == 'pptk':
+        laporans = Laporan.objects.filter(pptk=user)
     else:
         laporans = Laporan.objects.all()
         
@@ -125,7 +125,7 @@ def laporan_list_view(request):
     q_status = request.GET.get('status')
     q_bulan = request.GET.get('bulan')
     q_kegiatan = request.GET.get('kegiatan')
-    q_pengawas = request.GET.get('pengawas')
+    q_pptk = request.GET.get('pptk')
     q_search = request.GET.get('search')
     
     if q_status:
@@ -134,8 +134,8 @@ def laporan_list_view(request):
         laporans = laporans.filter(bulan_laporan=q_bulan)
     if q_kegiatan:
         laporans = laporans.filter(kegiatan_id=q_kegiatan)
-    if q_pengawas and user.role != 'pengawas':
-        laporans = laporans.filter(pengawas_id=q_pengawas)
+    if q_pptk and user.role != 'pptk':
+        laporans = laporans.filter(pptk_id=q_pptk)
     if q_search:
         laporans = laporans.filter(
             Q(kegiatan__judul_kegiatan__icontains=q_search) | 
@@ -144,22 +144,25 @@ def laporan_list_view(request):
         )
         
     # Get metadata for filter inputs
-    all_kegiatans = Kegiatan.objects.all()
-    all_pengawas = User.objects.filter(role='pengawas')
+    if user.role == 'pptk':
+        all_kegiatans = Kegiatan.objects.filter(pptk=user)
+    else:
+        all_kegiatans = Kegiatan.objects.all()
+    all_pptk = User.objects.filter(role='pptk')
     all_bulans = [b[0] for b in Laporan.BULAN_CHOICES]
     all_statuses = Laporan.STATUS_CHOICES
     
     context = {
         'laporans': laporans,
         'all_kegiatans': all_kegiatans,
-        'all_pengawas': all_pengawas,
+        'all_pptk': all_pptk,
         'all_bulans': all_bulans,
         'all_statuses': all_statuses,
         'filters': {
             'status': q_status or '',
             'bulan': q_bulan or '',
             'kegiatan': q_kegiatan or '',
-            'pengawas': q_pengawas or '',
+            'pptk': q_pptk or '',
             'search': q_search or '',
         }
     }
@@ -167,13 +170,14 @@ def laporan_list_view(request):
 
 
 @login_required
-@role_required('pengawas')
+@role_required('pptk')
 def laporan_buat_view(request):
     if request.method == 'POST':
         form = LaporanForm(request.POST)
+        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
         if form.is_valid():
             laporan = form.save(commit=False)
-            laporan.pengawas = request.user
+            laporan.pptk = request.user
             
             # Check action (draft or submit)
             action = request.POST.get('action')
@@ -219,6 +223,7 @@ def laporan_buat_view(request):
             return redirect('laporan_list')
     else:
         form = LaporanForm()
+        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
         
     return render(request, 'laporan/form.html', {'form': form, 'is_new': True})
 
@@ -228,7 +233,7 @@ def laporan_detail_view(request, pk):
     laporan = get_object_or_404(Laporan, pk=pk)
     
     # Authorization check
-    if request.user.role == 'pengawas' and laporan.pengawas != request.user:
+    if request.user.role == 'pptk' and laporan.pptk != request.user:
         messages.error(request, "Anda tidak diperbolehkan melihat laporan ini.")
         return redirect('dashboard')
         
@@ -244,12 +249,12 @@ def laporan_detail_view(request, pk):
 
 
 @login_required
-@role_required('pengawas')
+@role_required('pptk')
 def laporan_edit_view(request, pk):
     laporan = get_object_or_404(Laporan, pk=pk)
     
     # Ownership & status constraint checks
-    if laporan.pengawas != request.user:
+    if laporan.pptk != request.user:
         messages.error(request, "Anda hanya bisa mengedit laporan milik sendiri.")
         return redirect('dashboard')
         
@@ -259,9 +264,11 @@ def laporan_edit_view(request, pk):
         
     if request.method == 'POST':
         form = LaporanForm(request.POST, instance=laporan)
+        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
         if form.is_valid():
             original_status = laporan.status
             laporan = form.save(commit=False)
+            laporan.pptk = request.user
             
             # Check action
             action = request.POST.get('action')
@@ -305,6 +312,7 @@ def laporan_edit_view(request, pk):
             return redirect('laporan_detail', pk=laporan.pk)
     else:
         form = LaporanForm(instance=laporan)
+        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
         
     dokumentasis = laporan.dokumentasi.all()
     context = {
@@ -341,9 +349,9 @@ def laporan_verifikasi_view(request, pk):
                 catatan='Laporan disetujui dan diverifikasi.'
             )
             
-            # Notify pengawas
+            # Notify pptk
             Notifikasi.objects.create(
-                user=laporan.pengawas,
+                user=laporan.pptk,
                 judul="Laporan Disetujui",
                 pesan=f"Laporan kegiatan '{laporan.kegiatan.judul_kegiatan}' untuk bulan {laporan.bulan_laporan} telah disetujui oleh Admin.",
                 laporan=laporan
@@ -369,15 +377,15 @@ def laporan_verifikasi_view(request, pk):
                 catatan=f"Laporan ditolak / perlu revisi. Catatan: {catatan}"
             )
             
-            # Notify pengawas
+            # Notify pptk
             Notifikasi.objects.create(
-                user=laporan.pengawas,
+                user=laporan.pptk,
                 judul="Laporan Butuh Revisi",
                 pesan=f"Laporan kegiatan '{laporan.kegiatan.judul_kegiatan}' bulan {laporan.bulan_laporan} ditolak/butuh revisi. Catatan: {catatan}",
                 laporan=laporan
             )
             
-            messages.warning(request, "Laporan ditolak dan dikembalikan ke pengawas untuk direvisi.")
+            messages.warning(request, "Laporan ditolak dan dikembalikan ke PPTK untuk direvisi.")
             
     return redirect('laporan_detail', pk=laporan.pk)
 
@@ -387,11 +395,11 @@ def laporan_hapus_view(request, pk):
     laporan = get_object_or_404(Laporan, pk=pk)
     
     # Auth constraint
-    if request.user.role == 'pengawas' and laporan.pengawas != request.user:
+    if request.user.role == 'pptk' and laporan.pptk != request.user:
         messages.error(request, "Anda tidak diizinkan menghapus laporan ini.")
         return redirect('dashboard')
         
-    if request.user.role == 'pengawas' and laporan.status not in ['draft', 'perlu_revisi']:
+    if request.user.role == 'pptk' and laporan.status not in ['draft', 'perlu_revisi']:
         messages.error(request, "Anda hanya bisa menghapus laporan berstatus Draft atau Perlu Revisi.")
         return redirect('laporan_detail', pk=laporan.pk)
         
@@ -415,10 +423,10 @@ def dokumentasi_hapus_view(request, pk):
     laporan = doc.laporan
     
     # Auth constraint
-    if request.user.role == 'pengawas' and laporan.pengawas != request.user:
+    if request.user.role == 'pptk' and laporan.pptk != request.user:
         return HttpResponseRedirect(request.META.get('HTTP_REFERER', reverse('dashboard')))
         
-    if request.user.role == 'pengawas' and laporan.status not in ['draft', 'perlu_revisi']:
+    if request.user.role == 'pptk' and laporan.status not in ['draft', 'perlu_revisi']:
         return HttpResponseRedirect(request.META.get('HTTP_REFERER', reverse('dashboard')))
         
     # Delete from disk
@@ -441,7 +449,7 @@ def rekap_view(request):
     # Apply Filters
     q_bulan = request.GET.get('bulan')
     q_kegiatan = request.GET.get('kegiatan')
-    q_pengawas = request.GET.get('pengawas')
+    q_pptk = request.GET.get('pptk')
     
     # We only show terverifikasi reports in the recap sheet
     laporans = Laporan.objects.filter(status='terverifikasi')
@@ -450,22 +458,22 @@ def rekap_view(request):
         laporans = laporans.filter(bulan_laporan=q_bulan)
     if q_kegiatan:
         laporans = laporans.filter(kegiatan_id=q_kegiatan)
-    if q_pengawas:
-        laporans = laporans.filter(pengawas_id=q_pengawas)
+    if q_pptk:
+        laporans = laporans.filter(pptk_id=q_pptk)
         
     all_kegiatans = Kegiatan.objects.all()
-    all_pengawas = User.objects.filter(role='pengawas')
+    all_pptk = User.objects.filter(role='pptk')
     all_bulans = [b[0] for b in Laporan.BULAN_CHOICES]
     
     context = {
         'laporans': laporans,
         'all_kegiatans': all_kegiatans,
-        'all_pengawas': all_pengawas,
+        'all_pptk': all_pptk,
         'all_bulans': all_bulans,
         'filters': {
             'bulan': q_bulan or '',
             'kegiatan': q_kegiatan or '',
-            'pengawas': q_pengawas or '',
+            'pptk': q_pptk or '',
         }
     }
     return render(request, 'rekap/rekap.html', context)
@@ -476,7 +484,7 @@ def rekap_view(request):
 def rekap_excel_view(request):
     q_bulan = request.GET.get('bulan')
     q_kegiatan = request.GET.get('kegiatan')
-    q_pengawas = request.GET.get('pengawas')
+    q_pptk = request.GET.get('pptk')
     
     # Filter reports
     laporans = Laporan.objects.filter(status='terverifikasi')
@@ -484,8 +492,8 @@ def rekap_excel_view(request):
         laporans = laporans.filter(bulan_laporan=q_bulan)
     if q_kegiatan:
         laporans = laporans.filter(kegiatan_id=q_kegiatan)
-    if q_pengawas:
-        laporans = laporans.filter(pengawas_id=q_pengawas)
+    if q_pptk:
+        laporans = laporans.filter(pptk_id=q_pptk)
         
     # Create workbook
     wb = openpyxl.Workbook()
@@ -523,9 +531,9 @@ def rekap_excel_view(request):
     # Headers
     headers = [
         "No", 
-        "Pengawas Lapangan", 
-        "Judul Kegiatan", 
         "Nama PPTK", 
+        "Jabatan PPTK", 
+        "Judul Kegiatan", 
         "Bulan Laporan", 
         "Tahapan Pelaksanaan", 
         "Kendala", 
@@ -561,13 +569,13 @@ def rekap_excel_view(request):
         c1 = ws.cell(row=current_row, column=1, value=idx)
         c1.alignment = center_align
         
-        c2 = ws.cell(row=current_row, column=2, value=f"{lap.pengawas.first_name} {lap.pengawas.last_name}")
+        c2 = ws.cell(row=current_row, column=2, value=f"{lap.pptk.first_name} {lap.pptk.last_name}")
         c2.alignment = left_align
         
-        c3 = ws.cell(row=current_row, column=3, value=lap.kegiatan.judul_kegiatan)
+        c3 = ws.cell(row=current_row, column=3, value=lap.pptk.jabatan)
         c3.alignment = left_align
         
-        c4 = ws.cell(row=current_row, column=4, value=lap.kegiatan.pptk.nama)
+        c4 = ws.cell(row=current_row, column=4, value=lap.kegiatan.judul_kegiatan)
         c4.alignment = left_align
         
         c5 = ws.cell(row=current_row, column=5, value=lap.bulan_laporan)
@@ -593,9 +601,9 @@ def rekap_excel_view(request):
     # Adjust column widths
     column_widths = {
         'A': 5,   # No
-        'B': 25,  # Pengawas
-        'C': 35,  # Kegiatan
-        'D': 25,  # PPTK
+        'B': 25,  # Nama PPTK
+        'C': 25,  # Jabatan PPTK
+        'D': 35,  # Judul Kegiatan
         'E': 15,  # Bulan
         'F': 45,  # Tahapan
         'G': 30,  # Kendala
@@ -618,7 +626,7 @@ def rekap_pdf_view(request, pk):
     laporan = get_object_or_404(Laporan, pk=pk)
     
     # Auth constraint
-    if request.user.role == 'pengawas' and laporan.pengawas != request.user:
+    if request.user.role == 'pptk' and laporan.pptk != request.user:
         messages.error(request, "Anda tidak diperbolehkan mengakses cetak laporan ini.")
         return redirect('dashboard')
         
@@ -634,98 +642,74 @@ def rekap_pdf_view(request, pk):
     return render(request, 'rekap/pdf_report.html', context)
 
 
-# --- Master PPTK ---
-
-@login_required
-@role_required('admin', 'super_admin')
-def pptk_list_view(request):
-    pptks = PPTK.objects.all()
-    return render(request, 'master/pptk_list.html', {'pptks': pptks})
-
-
-@login_required
-@role_required('admin', 'super_admin')
-def pptk_tambah_view(request):
-    if request.method == 'POST':
-        form = PPTKForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Master data PPTK berhasil ditambahkan.")
-            return redirect('pptk_list')
-    else:
-        form = PPTKForm()
-    return render(request, 'master/pptk_form.html', {'form': form, 'is_new': True})
-
-
-@login_required
-@role_required('admin', 'super_admin')
-def pptk_edit_view(request, pk):
-    pptk = get_object_or_404(PPTK, pk=pk)
-    if request.method == 'POST':
-        form = PPTKForm(request.POST, instance=pptk)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Master data PPTK berhasil diperbarui.")
-            return redirect('pptk_list')
-    else:
-        form = PPTKForm(instance=pptk)
-    return render(request, 'master/pptk_form.html', {'form': form, 'is_new': False, 'pptk': pptk})
-
-
-@login_required
-@role_required('admin', 'super_admin')
-def pptk_hapus_view(request, pk):
-    pptk = get_object_or_404(PPTK, pk=pk)
-    if pptk.kegiatan.exists():
-        messages.error(request, "Tidak dapat menghapus PPTK karena masih terhubung dengan kegiatan aktif.")
-    else:
-        pptk.delete()
-        messages.success(request, "Master data PPTK berhasil dihapus.")
-    return redirect('pptk_list')
-
-
 # --- Master Kegiatan ---
 
 @login_required
-@role_required('admin', 'super_admin')
+@role_required('admin', 'super_admin', 'pptk')
 def kegiatan_list_view(request):
-    kegiatans = Kegiatan.objects.all()
+    user = request.user
+    if user.role == 'pptk':
+        kegiatans = Kegiatan.objects.filter(pptk=user)
+    else:
+        kegiatans = Kegiatan.objects.all()
     return render(request, 'master/kegiatan_list.html', {'kegiatans': kegiatans})
 
 
 @login_required
-@role_required('admin', 'super_admin')
+@role_required('admin', 'super_admin', 'pptk')
 def kegiatan_tambah_view(request):
     if request.method == 'POST':
         form = KegiatanForm(request.POST)
+        if request.user.role == 'pptk':
+            form.fields['pptk'].required = False
         if form.is_valid():
-            form.save()
+            kegiatan = form.save(commit=False)
+            if request.user.role == 'pptk':
+                kegiatan.pptk = request.user
+            kegiatan.save()
             messages.success(request, "Master data Kegiatan berhasil ditambahkan.")
             return redirect('kegiatan_list')
     else:
         form = KegiatanForm()
+        if request.user.role == 'pptk':
+            form.fields['pptk'].required = False
     return render(request, 'master/kegiatan_form.html', {'form': form, 'is_new': True})
 
 
 @login_required
-@role_required('admin', 'super_admin')
+@role_required('admin', 'super_admin', 'pptk')
 def kegiatan_edit_view(request, pk):
     kegiatan = get_object_or_404(Kegiatan, pk=pk)
+    if request.user.role == 'pptk' and kegiatan.pptk != request.user:
+        messages.error(request, "Anda hanya dapat mengubah kegiatan milik sendiri.")
+        return redirect('kegiatan_list')
+        
     if request.method == 'POST':
         form = KegiatanForm(request.POST, instance=kegiatan)
+        if request.user.role == 'pptk':
+            form.fields['pptk'].required = False
         if form.is_valid():
-            form.save()
+            kegiatan = form.save(commit=False)
+            if request.user.role == 'pptk':
+                kegiatan.pptk = request.user
+            kegiatan.save()
             messages.success(request, "Master data Kegiatan berhasil diperbarui.")
             return redirect('kegiatan_list')
     else:
         form = KegiatanForm(instance=kegiatan)
+        if request.user.role == 'pptk':
+            form.fields['pptk'].required = False
     return render(request, 'master/kegiatan_form.html', {'form': form, 'is_new': False, 'kegiatan': kegiatan})
 
 
 @login_required
-@role_required('admin', 'super_admin')
+@role_required('admin', 'super_admin', 'pptk')
 def kegiatan_hapus_view(request, pk):
     kegiatan = get_object_or_404(Kegiatan, pk=pk)
+    if request.user.role == 'pptk' and kegiatan.pptk != request.user:
+        messages.error(request, "Anda hanya dapat menghapus kegiatan milik sendiri.")
+        return redirect('kegiatan_list')
+        
     if kegiatan.laporan.exists():
         messages.error(request, "Tidak dapat menghapus Kegiatan karena masih terhubung dengan laporan aktif.")
     else:

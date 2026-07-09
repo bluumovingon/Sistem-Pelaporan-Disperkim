@@ -7,11 +7,12 @@ class User(AbstractUser):
     ROLE_CHOICES = (
         ('super_admin', 'Super Admin'),
         ('admin', 'Admin'),
-        ('pengawas', 'Pengawas Lapangan'),
+        ('pptk', 'PPTK'),
         ('pimpinan', 'Pimpinan'),
     )
     
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='pengawas')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='pptk')
+    jabatan = models.CharField(max_length=100, blank=True)
     unit_kerja = models.CharField(max_length=100, blank=True)
     status_aktif = models.BooleanField(default=True)
     
@@ -19,22 +20,9 @@ class User(AbstractUser):
         return f"{self.first_name} {self.last_name} ({self.username}) - {self.get_role_display()}"
 
 
-class PPTK(models.Model):
-    nama = models.CharField(max_length=150)
-    jabatan = models.CharField(max_length=150)
-    unit_kerja = models.CharField(max_length=150)
-    
-    class Meta:
-        verbose_name = "PPTK"
-        verbose_name_plural = "PPTK"
-        
-    def __str__(self):
-        return self.nama
-
-
 class Kegiatan(models.Model):
     judul_kegiatan = models.CharField(max_length=255)
-    pptk = models.ForeignKey(PPTK, on_delete=models.CASCADE, related_name='kegiatan')
+    pptk = models.ForeignKey(User, on_delete=models.CASCADE, related_name='kegiatan', limit_choices_to={'role': 'pptk'})
     tahun = models.IntegerField(default=datetime.datetime.now().year)
     
     class Meta:
@@ -69,7 +57,7 @@ class Laporan(models.Model):
     )
     
     kegiatan = models.ForeignKey(Kegiatan, on_delete=models.CASCADE, related_name='laporan')
-    pengawas = models.ForeignKey(User, on_delete=models.CASCADE, related_name='laporan_pengawas', limit_choices_to={'role': 'pengawas'})
+    pptk = models.ForeignKey(User, on_delete=models.CASCADE, related_name='laporan_pptk', limit_choices_to={'role': 'pptk'})
     bulan_laporan = models.CharField(max_length=20, choices=BULAN_CHOICES)
     tahapan_pelaksanaan = models.TextField()
     kendala = models.TextField(blank=True)
@@ -84,7 +72,7 @@ class Laporan(models.Model):
         ordering = ['-updated_at']
         
     def __str__(self):
-        return f"Laporan {self.kegiatan.judul_kegiatan} - {self.bulan_laporan} ({self.pengawas.username})"
+        return f"Laporan {self.kegiatan.judul_kegiatan} - {self.bulan_laporan} ({self.pptk.username})"
         
     @property
     def is_draft(self):

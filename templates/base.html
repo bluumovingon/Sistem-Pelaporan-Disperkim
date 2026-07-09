@@ -31,20 +31,17 @@
                 <i class="fa-solid fa-file-invoice"></i> Laporan Kegiatan
             </a>
             
-            {% if request.user.role != 'pengawas' %}
+            {% if request.user.role != 'pptk' %}
                 <div class="sidebar-heading mt-3">Pelaporan & Rekap</div>
                 <a href="{% url 'rekap' %}" class="sidebar-item {% if request.resolver_match.url_name == 'rekap' %}active{% endif %}">
                     <i class="fa-solid fa-chart-line"></i> Rekapitulasi Laporan
                 </a>
             {% endif %}
             
-            {% if request.user.role == 'admin' or request.user.role == 'super_admin' %}
-                <div class="sidebar-heading mt-3">Master Data</div>
-                <a href="{% url 'pptk_list' %}" class="sidebar-item {% if 'pptk' in request.path %}active{% endif %}">
-                    <i class="fa-solid fa-user-tie"></i> Master PPTK
-                </a>
+            {% if request.user.role == 'admin' or request.user.role == 'super_admin' or request.user.role == 'pptk' %}
+                <div class="sidebar-heading mt-3">Program & Proyek</div>
                 <a href="{% url 'kegiatan_list' %}" class="sidebar-item {% if 'kegiatan' in request.path %}active{% endif %}">
-                    <i class="fa-solid fa-folder-open"></i> Master Kegiatan
+                    <i class="fa-solid fa-folder-open"></i> {% if request.user.role == 'pptk' %}Kegiatan Saya{% else %}Kelola Kegiatan{% endif %}
                 </a>
             {% endif %}
             

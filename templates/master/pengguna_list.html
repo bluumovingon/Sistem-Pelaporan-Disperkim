@@ -27,6 +27,7 @@
                         <th>Username</th>
                         <th>Nama Pengguna</th>
                         <th>Role Akses</th>
+                        <th>Jabatan</th>
                         <th>Unit Kerja/Bidang</th>
                         <th>Status</th>
                         <th class="text-end pe-4">Aksi</th>
@@ -44,12 +45,13 @@
                                         <span class="badge bg-dark-subtle text-dark-emphasis px-2.5 py-1.5 rounded-3">Super Admin</span>
                                     {% elif user.role == 'admin' %}
                                         <span class="badge bg-primary-subtle text-primary-emphasis px-2.5 py-1.5 rounded-3">Admin</span>
-                                    {% elif user.role == 'pengawas' %}
-                                        <span class="badge bg-warning-subtle text-warning-emphasis px-2.5 py-1.5 rounded-3">Pengawas Lapangan</span>
+                                    {% elif user.role == 'pptk' %}
+                                        <span class="badge bg-warning-subtle text-warning-emphasis px-2.5 py-1.5 rounded-3">PPTK</span>
                                     {% elif user.role == 'pimpinan' %}
                                         <span class="badge bg-info-subtle text-info-emphasis px-2.5 py-1.5 rounded-3">Pimpinan</span>
                                     {% endif %}
                                 </td>
+                                <td>{{ user.jabatan|default:"-" }}</td>
                                 <td>{{ user.unit_kerja|default:"-" }}</td>
                                 <td>
                                     {% if user.status_aktif %}
@@ -68,7 +70,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
+                            <td colspan="8" class="text-center py-5 text-muted">
                                 <i class="fa-solid fa-users-slash fs-3 mb-2 d-block"></i>
                                 Belum ada data pengguna terdaftar.
                             </td>

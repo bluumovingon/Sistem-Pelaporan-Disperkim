@@ -50,15 +50,21 @@
                             {{ form.email }}
                         </div>
                         
-                        <div class="col-12 col-sm-6">
+                        <div class="col-12 col-sm-4">
                             <label for="{{ form.role.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Peran Akses (Role) <span class="text-danger">*</span></label>
                             {{ form.role }}
                         </div>
                         
-                        <div class="col-12 col-sm-6">
+                        <div class="col-12 col-sm-4">
+                            <label for="{{ form.jabatan.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Jabatan</label>
+                            {{ form.jabatan }}
+                            <small class="text-muted">Contoh: Kasi Perumahan</small>
+                        </div>
+                        
+                        <div class="col-12 col-sm-4">
                             <label for="{{ form.unit_kerja.id_for_label }}" class="form-label font-weight-bold" style="color: #4b5563;">Unit Kerja / Bidang</label>
                             {{ form.unit_kerja }}
-                            <small class="text-muted">Contoh: Pengawas Bidang Perumahan</small>
+                            <small class="text-muted">Contoh: Bidang Perumahan</small>
                         </div>
                         
                         <div class="col-12">

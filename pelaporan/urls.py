@@ -22,12 +22,6 @@ urlpatterns = [
     path('rekap/excel/', views.rekap_excel_view, name='rekap_excel'),
     path('rekap/pdf/<int:pk>/', views.rekap_pdf_view, name='rekap_pdf'),
     
-    # Master PPTK
-    path('master/pptk/', views.pptk_list_view, name='pptk_list'),
-    path('master/pptk/tambah/', views.pptk_tambah_view, name='pptk_tambah'),
-    path('master/pptk/<int:pk>/edit/', views.pptk_edit_view, name='pptk_edit'),
-    path('master/pptk/<int:pk>/hapus/', views.pptk_hapus_view, name='pptk_hapus'),
-    
     # Master Kegiatan
     path('master/kegiatan/', views.kegiatan_list_view, name='kegiatan_list'),
     path('master/kegiatan/tambah/', views.kegiatan_tambah_view, name='kegiatan_tambah'),

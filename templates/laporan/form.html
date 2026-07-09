@@ -7,7 +7,7 @@
     <li class="breadcrumb-item active" aria-current="page">{% if is_new %}Buat{% else %}Edit{% endif %}</li>
 {% endblock %}
 
-{% block page_title %}{% if is_new %}Buat Laporan Pengawasan Baru{% else %}Edit Laporan Pengawasan{% endif %}{% endblock %}
+{% block page_title %}{% if is_new %}Buat Laporan Kegiatan Baru{% else %}Edit Laporan Kegiatan{% endif %}{% endblock %}
 
 {% block content %}
 <div class="row g-4 justify-content-center">
@@ -25,7 +25,7 @@
         {% endif %}
         
         <div class="card card-premium">
-            <div class="card-header-premium"><i class="fa-solid fa-file-signature text-primary me-2"></i> Formulir Laporan Pengawasan</div>
+            <div class="card-header-premium"><i class="fa-solid fa-file-signature text-primary me-2"></i> Formulir Laporan Kegiatan</div>
             
             <div class="card-body p-4">
                 <form method="POST" enctype="multipart/form-data" id="laporanForm" class="needs-validation" novalidate>

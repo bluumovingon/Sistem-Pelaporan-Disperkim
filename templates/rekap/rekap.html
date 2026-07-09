@@ -34,11 +34,11 @@
             </div>
             
             <div class="col-12 col-md-4">
-                <label for="pengawas" class="form-label" style="font-weight: 600; color: #4b5563;">Pengawas Lapangan</label>
-                <select name="pengawas" id="pengawas" class="form-select">
-                    <option value="">-- Semua Pengawas --</option>
-                    {% for pgw in all_pengawas %}
-                        <option value="{{ pgw.id }}" {% if filters.pengawas == pgw.id|stringformat:"i" %}selected{% endif %}>{{ pgw.first_name }} {{ pgw.last_name }}</option>
+                <label for="pptk" class="form-label" style="font-weight: 600; color: #4b5563;">PPTK Pelapor</label>
+                <select name="pptk" id="pptk" class="form-select">
+                    <option value="">-- Semua PPTK --</option>
+                    {% for p in all_pptk %}
+                        <option value="{{ p.id }}" {% if filters.pptk == p.id|stringformat:"i" %}selected{% endif %}>{{ p.first_name }} {{ p.last_name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -54,7 +54,7 @@
 <!-- Recap table & export actions -->
 <div class="card card-premium">
     <div class="card-header-premium d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <span><i class="fa-solid fa-file-invoice text-primary me-2"></i> Laporan Pengawasan Terverifikasi</span>
+        <span><i class="fa-solid fa-file-invoice text-primary me-2"></i> Laporan Kegiatan Terverifikasi</span>
         
         <!-- Export buttons -->
         <div class="d-flex gap-1">
@@ -70,9 +70,9 @@
                 <thead class="table-light">
                     <tr>
                         <th class="ps-4">No</th>
-                        <th>Pengawas</th>
+                        <th>PPTK Pelapor</th>
+                        <th>Jabatan PPTK</th>
                         <th>Kegiatan</th>
-                        <th>PPTK</th>
                         <th>Bulan</th>
                         <th>Progres Pelaksanaan</th>
                         <th>Kendala</th>
@@ -85,14 +85,14 @@
                             <tr>
                                 <td class="ps-4 text-muted">{{ forloop.counter }}</td>
                                 <td>
-                                    <div class="font-weight-bold text-dark">{{ lap.pengawas.first_name }} {{ lap.pengawas.last_name }}</div>
-                                    <small class="text-muted" style="font-size: 0.725rem;">{{ lap.pengawas.unit_kerja }}</small>
+                                    <div class="font-weight-bold text-dark">{{ lap.pptk.first_name }} {{ lap.pptk.last_name }}</div>
+                                    <small class="text-muted" style="font-size: 0.725rem;">{{ lap.pptk.unit_kerja }}</small>
                                 </td>
+                                <td>{{ lap.pptk.jabatan|default:"-" }}</td>
                                 <td>
                                     <div class="font-weight-bold text-dark">{{ lap.kegiatan.judul_kegiatan }}</div>
                                     <small class="text-muted" style="font-size: 0.725rem;">Tahun: {{ lap.kegiatan.tahun }}</small>
                                 </td>
-                                <td>{{ lap.kegiatan.pptk.nama }}</td>
                                 <td>{{ lap.bulan_laporan }}</td>
                                 <td>
                                     <div class="text-truncate" style="max-width: 200px;" title="{{ lap.tahapan_pelaksanaan }}">
@@ -133,12 +133,12 @@
     document.getElementById('btnExportExcel').addEventListener('click', function() {
         const bul = document.getElementById('bulan').value;
         const keg = document.getElementById('kegiatan').value;
-        const pgw = document.getElementById('pengawas').value;
+        const pptk = document.getElementById('pptk').value;
         
         let url = "{% url 'rekap_excel' %}?";
         if (bul) url += `bulan=${encodeURIComponent(bul)}&`;
         if (keg) url += `kegiatan=${encodeURIComponent(keg)}&`;
-        if (pgw) url += `pengawas=${encodeURIComponent(pgw)}&`;
+        if (pptk) url += `pptk=${encodeURIComponent(pptk)}&`;
         
         window.location.href = url;
     });

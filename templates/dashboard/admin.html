@@ -82,9 +82,9 @@
     
     <div class="col-12 col-xl-4">
         <div class="card card-premium h-100">
-            <div class="card-header-premium"><i class="fa-solid fa-chart-bar text-primary me-2"></i> Produktivitas Pengawas</div>
+            <div class="card-header-premium"><i class="fa-solid fa-chart-bar text-primary me-2"></i> Keaktifan PPTK</div>
             <div class="card-body d-flex align-items-center justify-content-center" style="height: 250px;">
-                <canvas id="pengawasChart"></canvas>
+                <canvas id="pptkChart"></canvas>
             </div>
         </div>
     </div>
@@ -103,7 +103,7 @@
                     <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-4">Pengawas</th>
+                                <th class="ps-4">PPTK Pelapor</th>
                                 <th>Nama Kegiatan / Proyek</th>
                                 <th>Bulan</th>
                                 <th>Tanggal Masuk</th>
@@ -115,12 +115,12 @@
                                 {% for lap in pending_reports %}
                                     <tr>
                                         <td class="ps-4">
-                                            <div class="font-weight-bold text-dark">{{ lap.pengawas.first_name }} {{ lap.pengawas.last_name }}</div>
-                                            <small class="text-muted" style="font-size: 0.75rem;">{{ lap.pengawas.unit_kerja }}</small>
+                                            <div class="font-weight-bold text-dark">{{ lap.pptk.first_name }} {{ lap.pptk.last_name }}</div>
+                                            <small class="text-muted" style="font-size: 0.75rem;">{{ lap.pptk.unit_kerja }}</small>
                                         </td>
                                         <td>
                                             <div class="font-weight-bold text-dark">{{ lap.kegiatan.judul_kegiatan }}</div>
-                                            <small class="text-muted" style="font-size: 0.75rem;">PPTK: {{ lap.kegiatan.pptk.nama }}</small>
+                                            <small class="text-muted" style="font-size: 0.75rem;">Tahun Anggaran: {{ lap.kegiatan.tahun }}</small>
                                         </td>
                                         <td>{{ lap.bulan_laporan }}</td>
                                         <td class="text-muted">{{ lap.created_at|date:"d M Y, H:i" }} WIB</td>
@@ -218,23 +218,23 @@
         }
     });
 
-    // Pengawas Chart
-    const pengawasCtx = document.getElementById('pengawasChart').getContext('2d');
-    const pengawasNames = [];
-    const pengawasCounts = [];
+    // PPTK Chart
+    const pptkCtx = document.getElementById('pptkChart').getContext('2d');
+    const pptkNames = [];
+    const pptkCounts = [];
     
-    {% for item in pengawas_chart_data %}
-        pengawasNames.push("{{ item.pengawas__first_name }} {{ item.pengawas__last_name }}");
-        pengawasCounts.push({{ item.count }});
+    {% for item in pptk_chart_data %}
+        pptkNames.push("{{ item.pptk__first_name }} {{ item.pptk__last_name }}");
+        pptkCounts.push({{ item.count }});
     {% endfor %}
 
-    new Chart(pengawasCtx, {
+    new Chart(pptkCtx, {
         type: 'bar',
         data: {
-            labels: pengawasNames.length ? pengawasNames : ['Belum ada Pengawas'],
+            labels: pptkNames.length ? pptkNames : ['Belum ada PPTK'],
             datasets: [{
                 label: 'Laporan',
-                data: pengawasCounts.length ? pengawasCounts : [0],
+                data: pptkCounts.length ? pptkCounts : [0],
                 backgroundColor: '#3b82f6',
                 borderRadius: 4
             }]

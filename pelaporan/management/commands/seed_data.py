@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from pelaporan.models import User, PPTK, Kegiatan
+from pelaporan.models import User, Kegiatan
 import os
 
 class Command(BaseCommand):
@@ -41,35 +41,41 @@ class Command(BaseCommand):
         else:
             self.stdout.write('Admin user already exists.')
 
-        # Pengawas 1
-        if not User.objects.filter(username='pengawas1').exists():
-            pengawas1 = User.objects.create_user(
-                username='pengawas1',
-                email='budi@disperkim.go.id',
+        # PPTK 1 User
+        pptk1 = None
+        if not User.objects.filter(username='pptk1').exists():
+            pptk1 = User.objects.create_user(
+                username='pptk1',
+                email='ahmad@disperkim.go.id',
                 password='pengawas123',
-                first_name='Budi',
-                last_name='Santoso',
-                role='pengawas',
-                unit_kerja='Pengawas Bidang Perumahan'
+                first_name='Ahmad',
+                last_name='Subarjo, S.T.',
+                role='pptk',
+                jabatan='Kasi Perumahan Rakyat',
+                unit_kerja='Bidang Perumahan'
             )
-            self.stdout.write(self.style.SUCCESS('Pengawas 1 created (pengawas1 / pengawas123)'))
+            self.stdout.write(self.style.SUCCESS('PPTK 1 created (pptk1 / pengawas123)'))
         else:
-            self.stdout.write('Pengawas 1 already exists.')
+            pptk1 = User.objects.get(username='pptk1')
+            self.stdout.write('PPTK 1 already exists.')
 
-        # Pengawas 2
-        if not User.objects.filter(username='pengawas2').exists():
-            pengawas2 = User.objects.create_user(
-                username='pengawas2',
-                email='siti@disperkim.go.id',
+        # PPTK 2 User
+        pptk2 = None
+        if not User.objects.filter(username='pptk2').exists():
+            pptk2 = User.objects.create_user(
+                username='pptk2',
+                email='rina@disperkim.go.id',
                 password='pengawas123',
-                first_name='Siti',
-                last_name='Aminah',
-                role='pengawas',
-                unit_kerja='Pengawas Bidang Permukiman'
+                first_name='Rina',
+                last_name='Wijayanti, M.T.',
+                role='pptk',
+                jabatan='Kasi Permukiman Kumuh',
+                unit_kerja='Bidang Permukiman'
             )
-            self.stdout.write(self.style.SUCCESS('Pengawas 2 created (pengawas2 / pengawas123)'))
+            self.stdout.write(self.style.SUCCESS('PPTK 2 created (pptk2 / pengawas123)'))
         else:
-            self.stdout.write('Pengawas 2 already exists.')
+            pptk2 = User.objects.get(username='pptk2')
+            self.stdout.write('PPTK 2 already exists.')
 
         # Pimpinan
         if not User.objects.filter(username='pimpinan').exists():
@@ -86,28 +92,12 @@ class Command(BaseCommand):
         else:
             self.stdout.write('Pimpinan already exists.')
 
-        # 2. Create PPTK
-        self.stdout.write('Creating PPTK...')
-        pptk1, created = PPTK.objects.get_or_create(
-            nama='Ahmad Subarjo, S.T.',
-            defaults={'jabatan': 'Kasi Perumahan Rakyat', 'unit_kerja': 'Bidang Perumahan'}
-        )
-        if created:
-            self.stdout.write(self.style.SUCCESS('PPTK 1 created'))
-
-        pptk2, created = PPTK.objects.get_or_create(
-            nama='Rina Wijayanti, M.T.',
-            defaults={'jabatan': 'Kasi Permukiman Kumuh', 'unit_kerja': 'Bidang Permukiman'}
-        )
-        if created:
-            self.stdout.write(self.style.SUCCESS('PPTK 2 created'))
-
-        # 3. Create Kegiatan
+        # 2. Create Kegiatan (Proyek)
         self.stdout.write('Creating Kegiatan...')
         keg1, created = Kegiatan.objects.get_or_create(
             judul_kegiatan='Pembangunan Rumah Swadaya Kecamatan A',
             pptk=pptk1,
-            tahun=2026
+            defaults={'tahun': 2026}
         )
         if created:
             self.stdout.write(self.style.SUCCESS('Kegiatan 1 created'))
@@ -115,7 +105,7 @@ class Command(BaseCommand):
         keg2, created = Kegiatan.objects.get_or_create(
             judul_kegiatan='Peningkatan Kualitas Jalan Lingkungan Kelurahan B',
             pptk=pptk2,
-            tahun=2026
+            defaults={'tahun': 2026}
         )
         if created:
             self.stdout.write(self.style.SUCCESS('Kegiatan 2 created'))
@@ -123,7 +113,7 @@ class Command(BaseCommand):
         keg3, created = Kegiatan.objects.get_or_create(
             judul_kegiatan='Pembangunan Drainase Lingkungan RT 05/RW 02 Kelurahan C',
             pptk=pptk2,
-            tahun=2026
+            defaults={'tahun': 2026}
         )
         if created:
             self.stdout.write(self.style.SUCCESS('Kegiatan 3 created'))
