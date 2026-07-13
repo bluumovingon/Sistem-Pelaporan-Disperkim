@@ -52,6 +52,13 @@ class UserForm(forms.ModelForm):
             'status_aktif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Jika membuat pengguna baru, field password wajib diisi
+        if not self.instance or not self.instance.pk:
+            self.fields['password'].required = True
+            self.fields['password'].help_text = "Masukkan password untuk akun baru."
+        
     def save(self, commit=True):
         user = super().save(commit=False)
         password = self.cleaned_data.get('password')

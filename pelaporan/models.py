@@ -27,6 +27,14 @@ class Kegiatan(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     
+    KEGIATAN_STATUS_CHOICES = (
+        ('diajukan', 'Diajukan'),
+        ('disetujui', 'Disetujui'),
+        ('ditolak', 'Ditolak'),
+    )
+    status = models.CharField(max_length=20, choices=KEGIATAN_STATUS_CHOICES, default='disetujui')
+    catatan_admin = models.TextField(blank=True)
+    
     class Meta:
         verbose_name = "Kegiatan"
         verbose_name_plural = "Kegiatan"

@@ -108,50 +108,98 @@
 
 <!-- Verification Queue -->
 <div class="row g-4">
-    <div class="col-12">
-        <div class="card card-premium">
+    <div class="col-12 col-lg-6">
+        <div class="card card-premium h-100">
             <div class="card-header-premium d-flex align-items-center justify-content-between">
-                <span><i class="fa-solid fa-list-check text-primary me-2"></i> Antrean Verifikasi Laporan Masuk (Status: Diajukan)</span>
-                <a href="{% url 'laporan_list' %}?status=diajukan" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;">Lihat Semua Antrean</a>
+                <span><i class="fa-solid fa-list-check text-primary me-2"></i> Antrean Verifikasi Laporan Masuk</span>
+                <a href="{% url 'laporan_list' %}?status=diajukan" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;">Semua</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-4">PPTK Pelapor</th>
-                                <th>Nama Kegiatan / Proyek</th>
+                                <th class="ps-3">PPTK</th>
+                                <th>Kegiatan</th>
                                 <th>Bulan</th>
-                                <th>Tanggal Masuk</th>
-                                <th class="text-end pe-4">Aksi Verifikasi</th>
+                                <th class="text-end pe-3">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% if pending_reports %}
                                 {% for lap in pending_reports %}
                                     <tr>
-                                        <td class="ps-4">
+                                        <td class="ps-3">
                                             <div class="font-weight-bold text-dark">{{ lap.pptk.first_name }} {{ lap.pptk.last_name }}</div>
-                                            <small class="text-muted" style="font-size: 0.75rem;">{{ lap.pptk.unit_kerja }}</small>
                                         </td>
                                         <td>
-                                            <div class="font-weight-bold text-dark">{{ lap.kegiatan.judul_kegiatan }}</div>
-                                            <small class="text-muted" style="font-size: 0.75rem;">Tahun Anggaran: {{ lap.kegiatan.tahun }}</small>
+                                            <div class="font-weight-bold text-dark text-truncate" style="max-width: 150px;" title="{{ lap.kegiatan.judul_kegiatan }}">{{ lap.kegiatan.judul_kegiatan }}</div>
                                         </td>
                                         <td>{{ lap.bulan_laporan }}</td>
-                                        <td class="text-muted">{{ lap.created_at|date:"d M Y, H:i" }} WIB</td>
-                                        <td class="text-end pe-4">
-                                            <a href="{% url 'laporan_detail' lap.pk %}" class="btn btn-sm btn-primary border-0 shadow-sm" style="background-color: var(--primary-color); border-radius: 6px;">
-                                                <i class="fa-solid fa-magnifying-glass me-1"></i> Periksa & Verifikasi
+                                        <td class="text-end pe-3">
+                                            <a href="{% url 'laporan_detail' lap.pk %}" class="btn btn-sm btn-primary py-0.5 px-2" style="font-size: 0.75rem; border-radius: 4px;">
+                                                <i class="fa-solid fa-magnifying-glass"></i> Periksa
                                             </a>
                                         </td>
                                     </tr>
                                 {% endfor %}
                             {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">
-                                        <i class="fa-solid fa-circle-check text-success fs-3 mb-2 d-block"></i>
-                                        Semua laporan telah diverifikasi. Antrean kosong!
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-circle-check text-success fs-4 mb-2 d-block"></i>
+                                        Antrean kosong
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card card-premium h-100">
+            <div class="card-header-premium d-flex align-items-center justify-content-between">
+                <span><i class="fa-solid fa-folder-open text-primary me-2"></i> Antrean Persetujuan Kegiatan Baru</span>
+                <a href="{% url 'kegiatan_list' %}" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;">Kelola Kegiatan</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Pengusul (PPTK)</th>
+                                <th>Judul Kegiatan</th>
+                                <th>Tahun</th>
+                                <th class="text-end pe-3">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if pending_kegiatans %}
+                                {% for keg in pending_kegiatans %}
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="font-weight-bold text-dark">{{ keg.pptk.first_name }} {{ keg.pptk.last_name }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="font-weight-bold text-dark text-truncate" style="max-width: 180px;" title="{{ keg.judul_kegiatan }}">{{ keg.judul_kegiatan }}</div>
+                                        </td>
+                                        <td>{{ keg.tahun }}</td>
+                                        <td class="text-end pe-3">
+                                            <form action="{% url 'kegiatan_verifikasi' keg.pk %}" method="POST" class="d-inline mb-0">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="approve">
+                                                <button type="submit" class="btn btn-sm btn-success py-0.5 px-2" style="font-size: 0.75rem; border-radius: 4px;" onclick="return confirm('Apakah Anda yakin menyetujui kegiatan ini?')" title="Setujui"><i class="fa-solid fa-check"></i> ACC</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-circle-check text-success fs-4 mb-2 d-block"></i>
+                                        Tidak ada usulan kegiatan baru
                                     </td>
                                 </tr>
                             {% endif %}

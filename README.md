@@ -67,6 +67,14 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 DATABASE_URL=sqlite:///db.sqlite3
 ```
 
+> [!WARNING]
+> **KEAMANAN PRODUKSI (PRODUCTION SECURITY):**
+> Nilai `SECRET_KEY` di atas hanya untuk keperluan pengembangan lokal (development). Saat Anda melakukan deployment ke server produksi (seperti PythonAnywhere atau Render.com) dengan `DEBUG=False`, Anda **wajib** mengubah nilai `SECRET_KEY` tersebut dengan string acak baru yang aman dan rahasia.
+> Anda dapat menghasilkan kunci acak baru menggunakan perintah Python berikut di terminal Anda:
+> ```bash
+> python -c "import secrets; print(secrets.token_urlsafe(50))"
+> ```
+
 ### 5. Jalankan Migrasi Database
 Buat skema tabel database berdasarkan model Django yang ada:
 ```bash

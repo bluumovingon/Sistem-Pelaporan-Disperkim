@@ -24,9 +24,21 @@ def home_redirect(request):
     return redirect('login')
 
 
+from django.core.cache import cache
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
+        
+    # Rate Limiting Lockout berdasarkan IP
+    ip = request.META.get('REMOTE_ADDR')
+    lockout_key = f"lockout_{ip}"
+    attempts_key = f"attempts_{ip}"
+    
+    is_locked = cache.get(lockout_key)
+    if is_locked:
+        messages.error(request, "Terlalu banyak kegagalan login. Akses Anda dikunci selama 5 menit.")
+        return render(request, 'auth/login.html')
         
     if request.method == 'POST':
         u = request.POST.get('username')
@@ -35,13 +47,21 @@ def login_view(request):
         user = authenticate(username=u, password=p)
         if user is not None:
             if user.status_aktif:
+                cache.delete(attempts_key) # Reset percobaan jika sukses
                 login(request, user)
                 messages.success(request, f"Selamat datang kembali, {user.first_name}!")
                 return redirect('dashboard')
             else:
                 messages.error(request, "Akun Anda dinonaktifkan. Silakan hubungi Super Admin.")
         else:
-            messages.error(request, "Username atau password salah.")
+            attempts = cache.get(attempts_key, 0) + 1
+            cache.set(attempts_key, attempts, timeout=300) # Simpan selama 5 menit
+            
+            if attempts >= 5:
+                cache.set(lockout_key, True, timeout=300) # Kunci IP selama 5 menit
+                messages.error(request, "Terlalu banyak kegagalan login. Akses Anda dikunci selama 5 menit.")
+            else:
+                messages.error(request, f"Username atau password salah. Percobaan tersisa: {5 - attempts}")
             
     return render(request, 'auth/login.html')
 
@@ -59,6 +79,14 @@ def logout_view(request):
 def dashboard_view(request):
     user = request.user
     
+    # Prefetch untuk optimasi N+1 query pada riwayat laporan kegiatan
+    from django.db.models import Prefetch
+    latest_reports_prefetch = Prefetch(
+        'laporan',
+        queryset=Laporan.objects.order_by('-created_at'),
+        to_attr='prefetched_laporans'
+    )
+    
     if user.role == 'pptk':
         # Dashboard PPTK
         laporans = Laporan.objects.filter(pptk=user)
@@ -73,11 +101,16 @@ def dashboard_view(request):
         
         recent_laporans = laporans.order_by('-updated_at')[:5]
         
-        # Peta Spasial Kegiatan PPTK
-        kegiatans_query = Kegiatan.objects.filter(pptk=user, latitude__isnull=False, longitude__isnull=False)
+        # Peta Spasial Kegiatan PPTK (Dioptimalkan dengan select_related & prefetch_related)
+        kegiatans_query = Kegiatan.objects.filter(
+            pptk=user, 
+            latitude__isnull=False, 
+            longitude__isnull=False
+        ).select_related('pptk').prefetch_related(latest_reports_prefetch)
+        
         kegiatans_list = []
         for k in kegiatans_query:
-            latest_laporan = k.laporan.order_by('-created_at').first()
+            latest_laporan = k.prefetched_laporans[0] if k.prefetched_laporans else None
             status = latest_laporan.status if latest_laporan else 'belum_ada'
             status_display = latest_laporan.get_status_display() if latest_laporan else 'Belum ada laporan'
             kegiatans_list.append({
@@ -109,8 +142,11 @@ def dashboard_view(request):
             'perlu_revisi': laporans.filter(status='perlu_revisi').count(),
         }
         
-        # Reports waiting verification (only for Admin / Super Admin)
-        pending_reports = laporans.filter(status='diajukan').order_by('-updated_at')
+        # Laporan yang butuh verifikasi (Optimasi select_related)
+        pending_reports = laporans.filter(status='diajukan').select_related('pptk', 'kegiatan').order_by('-updated_at')
+        
+        # Kegiatan baru yang diajukan oleh PPTK (ACC kegiatan oleh Admin)
+        pending_kegiatans = Kegiatan.objects.filter(status='diajukan').select_related('pptk').order_by('-tahun')
         
         # Chart Data
         # 1. Reports by status
@@ -120,11 +156,15 @@ def dashboard_view(request):
         # 3. Reports by PPTK
         pptk_chart_data = list(laporans.values('pptk__first_name', 'pptk__last_name').annotate(count=Count('id')))
         
-        # Peta Spasial Seluruh Kegiatan
-        kegiatans_query = Kegiatan.objects.filter(latitude__isnull=False, longitude__isnull=False)
+        # Peta Spasial Seluruh Kegiatan (Optimasi select_related & prefetch_related)
+        kegiatans_query = Kegiatan.objects.filter(
+            latitude__isnull=False, 
+            longitude__isnull=False
+        ).select_related('pptk').prefetch_related(latest_reports_prefetch)
+        
         kegiatans_list = []
         for k in kegiatans_query:
-            latest_laporan = k.laporan.order_by('-created_at').first()
+            latest_laporan = k.prefetched_laporans[0] if k.prefetched_laporans else None
             status = latest_laporan.status if latest_laporan else 'belum_ada'
             status_display = latest_laporan.get_status_display() if latest_laporan else 'Belum ada laporan'
             kegiatans_list.append({
@@ -141,6 +181,7 @@ def dashboard_view(request):
         context = {
             'stats': stats,
             'pending_reports': pending_reports[:10],
+            'pending_kegiatans': pending_kegiatans[:10],
             'status_chart_data': status_chart_data,
             'month_chart_data': month_chart_data,
             'pptk_chart_data': pptk_chart_data,
@@ -155,11 +196,11 @@ def dashboard_view(request):
 def laporan_list_view(request):
     user = request.user
     
-    # Base query based on roles
+    # Base query based on roles (Optimasi N+1 select_related)
     if user.role == 'pptk':
-        laporans = Laporan.objects.filter(pptk=user)
+        laporans = Laporan.objects.filter(pptk=user).select_related('pptk', 'kegiatan')
     else:
-        laporans = Laporan.objects.all()
+        laporans = Laporan.objects.all().select_related('pptk', 'kegiatan')
         
     # Apply Filters
     q_status = request.GET.get('status')
@@ -183,9 +224,18 @@ def laporan_list_view(request):
             Q(kendala__icontains=q_search)
         )
         
+    # Urutkan agar konsisten dalam pagination
+    laporans = laporans.order_by('-updated_at')
+    
+    # Pagination (10 data per halaman)
+    from django.core.paginator import Paginator
+    paginator = Paginator(laporans, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     # Get metadata for filter inputs
     if user.role == 'pptk':
-        all_kegiatans = Kegiatan.objects.filter(pptk=user)
+        all_kegiatans = Kegiatan.objects.filter(pptk=user, status='disetujui')
     else:
         all_kegiatans = Kegiatan.objects.all()
     all_pptk = User.objects.filter(role='pptk')
@@ -193,7 +243,8 @@ def laporan_list_view(request):
     all_statuses = Laporan.STATUS_CHOICES
     
     context = {
-        'laporans': laporans,
+        'laporans': page_obj,
+        'page_obj': page_obj,
         'all_kegiatans': all_kegiatans,
         'all_pptk': all_pptk,
         'all_bulans': all_bulans,
@@ -214,7 +265,7 @@ def laporan_list_view(request):
 def laporan_buat_view(request):
     if request.method == 'POST':
         form = LaporanForm(request.POST)
-        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
+        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user, status='disetujui')
         # Validate files first
         files = request.FILES.getlist('files')
         allowed_extensions = ['.jpg', '.jpeg', '.png', '.pdf']
@@ -281,7 +332,7 @@ def laporan_buat_view(request):
             return redirect('laporan_list')
     else:
         form = LaporanForm()
-        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
+        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user, status='disetujui')
         
     return render(request, 'laporan/form.html', {'form': form, 'is_new': True})
 
@@ -322,7 +373,7 @@ def laporan_edit_view(request, pk):
         
     if request.method == 'POST':
         form = LaporanForm(request.POST, instance=laporan)
-        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
+        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user, status='disetujui')
         
         # Validate files first
         files = request.FILES.getlist('files')
@@ -395,7 +446,7 @@ def laporan_edit_view(request, pk):
             return redirect('laporan_detail', pk=laporan.pk)
     else:
         form = LaporanForm(instance=laporan)
-        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
+        form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user, status='disetujui')
         
     dokumentasis = laporan.dokumentasi.all()
     context = {
@@ -477,14 +528,19 @@ def laporan_verifikasi_view(request, pk):
 def laporan_hapus_view(request, pk):
     laporan = get_object_or_404(Laporan, pk=pk)
     
-    # Auth constraint
-    if request.user.role == 'pptk' and laporan.pptk != request.user:
-        messages.error(request, "Anda tidak diizinkan menghapus laporan ini.")
-        return redirect('dashboard')
-        
-    if request.user.role == 'pptk' and laporan.status not in ['draft', 'perlu_revisi']:
-        messages.error(request, "Anda hanya bisa menghapus laporan berstatus Draft atau Perlu Revisi.")
+    # Laporan terverifikasi tidak boleh dihapus oleh siapa pun (termasuk admin) demi integritas audit
+    if laporan.status == 'terverifikasi':
+        messages.error(request, "Laporan yang sudah Terverifikasi tidak dapat dihapus untuk menjaga keaslian jejak audit.")
         return redirect('laporan_detail', pk=laporan.pk)
+        
+    # Auth constraint
+    if request.user.role == 'pptk':
+        if laporan.pptk != request.user:
+            messages.error(request, "Anda tidak diizinkan menghapus laporan ini.")
+            return redirect('dashboard')
+        if laporan.status not in ['draft', 'perlu_revisi']:
+            messages.error(request, "Anda hanya bisa menghapus laporan berstatus Draft atau Perlu Revisi.")
+            return redirect('laporan_detail', pk=laporan.pk)
         
     # Delete file fields from disk
     docs = laporan.dokumentasi.all()
@@ -732,10 +788,20 @@ def rekap_pdf_view(request, pk):
 def kegiatan_list_view(request):
     user = request.user
     if user.role == 'pptk':
-        kegiatans = Kegiatan.objects.filter(pptk=user)
+        kegiatans = Kegiatan.objects.filter(pptk=user).select_related('pptk').order_by('-id')
     else:
-        kegiatans = Kegiatan.objects.all()
-    return render(request, 'master/kegiatan_list.html', {'kegiatans': kegiatans})
+        kegiatans = Kegiatan.objects.all().select_related('pptk').order_by('-id')
+        
+    # Pagination (10 data per halaman)
+    from django.core.paginator import Paginator
+    paginator = Paginator(kegiatans, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'master/kegiatan_list.html', {
+        'kegiatans': page_obj,
+        'page_obj': page_obj
+    })
 
 
 @login_required
@@ -749,8 +815,12 @@ def kegiatan_tambah_view(request):
             kegiatan = form.save(commit=False)
             if request.user.role == 'pptk':
                 kegiatan.pptk = request.user
+                kegiatan.status = 'diajukan'
+                messages.success(request, "Usulan Kegiatan berhasil ditambahkan dan menunggu persetujuan (ACC) Admin.")
+            else:
+                kegiatan.status = 'disetujui'
+                messages.success(request, "Data Kegiatan berhasil ditambahkan.")
             kegiatan.save()
-            messages.success(request, "Master data Kegiatan berhasil ditambahkan.")
             return redirect('kegiatan_list')
     else:
         form = KegiatanForm()
@@ -775,8 +845,11 @@ def kegiatan_edit_view(request, pk):
             kegiatan = form.save(commit=False)
             if request.user.role == 'pptk':
                 kegiatan.pptk = request.user
+                kegiatan.status = 'diajukan'
+                messages.success(request, "Data Kegiatan diperbarui dan diajukan ulang untuk persetujuan Admin.")
+            else:
+                messages.success(request, "Data Kegiatan berhasil diperbarui.")
             kegiatan.save()
-            messages.success(request, "Master data Kegiatan berhasil diperbarui.")
             return redirect('kegiatan_list')
     else:
         form = KegiatanForm(instance=kegiatan)
@@ -806,8 +879,18 @@ def kegiatan_hapus_view(request, pk):
 @login_required
 @role_required('super_admin')
 def pengguna_list_view(request):
-    penggunas = User.objects.all()
-    return render(request, 'master/pengguna_list.html', {'penggunas': penggunas})
+    penggunas = User.objects.all().order_by('-id')
+    
+    # Pagination (10 data per halaman)
+    from django.core.paginator import Paginator
+    paginator = Paginator(penggunas, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'master/pengguna_list.html', {
+        'penggunas': page_obj,
+        'page_obj': page_obj
+    })
 
 
 @login_required
@@ -881,3 +964,72 @@ def notifikasi_baca_semua_view(request):
     Notifikasi.objects.filter(user=request.user, is_read=False).update(is_read=True)
     messages.success(request, "Semua notifikasi telah ditandai sebagai dibaca.")
     return HttpResponseRedirect(request.META.get('HTTP_REFERER', reverse('dashboard')))
+
+
+# --- Proteksi Berkas Media & Verifikasi Kegiatan ---
+
+from django.http import FileResponse, Http404
+import mimetypes
+
+@login_required
+def serve_dokumentasi_view(request, filename):
+    filename = os.path.basename(filename)
+    doc = get_object_or_404(Dokumentasi, file='dokumentasi/' + filename)
+    laporan = doc.laporan
+    
+    # Cek otorisasi
+    if request.user.role == 'pptk' and laporan.pptk != request.user:
+        raise Http404("Anda tidak diizinkan mengakses berkas ini.")
+        
+    file_path = doc.file.path
+    if not os.path.exists(file_path):
+        raise Http404("Berkas tidak ditemukan.")
+        
+    content_type, _ = mimetypes.guess_type(file_path)
+    if not content_type:
+        content_type = 'application/octet-stream'
+        
+    return FileResponse(open(file_path, 'rb'), content_type=content_type)
+
+
+@login_required
+@role_required('admin', 'super_admin')
+def kegiatan_verifikasi_view(request, pk):
+    kegiatan = get_object_or_404(Kegiatan, pk=pk)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        catatan = request.POST.get('catatan_admin', '')
+        
+        if action == 'approve':
+            kegiatan.status = 'disetujui'
+            kegiatan.catatan_admin = ''
+            kegiatan.save()
+            
+            Notifikasi.objects.create(
+                user=kegiatan.pptk,
+                judul="Kegiatan Disetujui",
+                pesan=f"Usulan Kegiatan/Proyek '{kegiatan.judul_kegiatan}' Anda telah disetujui (ACC) oleh Admin.",
+                laporan=None
+            )
+            messages.success(request, "Kegiatan berhasil disetujui.")
+            
+        elif action == 'reject':
+            if not catatan:
+                messages.error(request, "Catatan/alasan penolakan harus diisi.")
+                return redirect('kegiatan_list')
+                
+            kegiatan.status = 'ditolak'
+            kegiatan.catatan_admin = catatan
+            kegiatan.save()
+            
+            Notifikasi.objects.create(
+                user=kegiatan.pptk,
+                judul="Kegiatan Ditolak",
+                pesan=f"Usulan Kegiatan/Proyek '{kegiatan.judul_kegiatan}' Anda ditolak oleh Admin. Catatan: {catatan}",
+                laporan=None
+            )
+            messages.warning(request, "Usulan Kegiatan telah ditolak.")
+            
+    return redirect('kegiatan_list')
+

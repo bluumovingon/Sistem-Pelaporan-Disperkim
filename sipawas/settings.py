@@ -28,9 +28,18 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
+from django.core.exceptions import ImproperlyConfigured
+
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env.bool('DEBUG', default=False)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+
+# Pengetakan Keamanan SECRET_KEY Produksi
+if not DEBUG and SECRET_KEY == 'django-insecure-sipawas-secret-key-1234567890':
+    raise ImproperlyConfigured(
+        "KEAMANAN CRITICAL: SECRET_KEY bawaan/insecure tidak boleh digunakan di lingkungan produksi (DEBUG=False)! "
+        "Harap ganti SECRET_KEY dengan kunci acak unik di file .env Anda."
+    )
 
 # Application definition
 

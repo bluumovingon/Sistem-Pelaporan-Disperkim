@@ -26,7 +26,11 @@ urlpatterns = [
     path('master/kegiatan/', views.kegiatan_list_view, name='kegiatan_list'),
     path('master/kegiatan/tambah/', views.kegiatan_tambah_view, name='kegiatan_tambah'),
     path('master/kegiatan/<int:pk>/edit/', views.kegiatan_edit_view, name='kegiatan_edit'),
+    path('master/kegiatan/<int:pk>/verifikasi/', views.kegiatan_verifikasi_view, name='kegiatan_verifikasi'),
     path('master/kegiatan/<int:pk>/hapus/', views.kegiatan_hapus_view, name='kegiatan_hapus'),
+    
+    # Proteksi Media Berkas
+    path('media/dokumentasi/<path:filename>', views.serve_dokumentasi_view, name='serve_dokumentasi'),
     
     # Master Pengguna (Super Admin)
     path('master/pengguna/', views.pengguna_list_view, name='pengguna_list'),
