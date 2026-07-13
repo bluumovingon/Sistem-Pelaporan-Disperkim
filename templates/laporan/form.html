@@ -157,6 +157,34 @@
         
         if (files.length === 0) return;
         
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
+        const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+        let hasError = false;
+        let errorMessage = '';
+        
+        Array.from(files).forEach((file) => {
+            const fileName = file.name;
+            const fileSizeMB = file.size / 1024 / 1024;
+            const fileExt = fileName.split('.').pop().toLowerCase();
+            
+            if (!allowedExtensions.includes(fileExt)) {
+                hasError = true;
+                errorMessage += `- Berkas "${fileName}" memiliki format yang salah (.${fileExt}). Hanya diperbolehkan format foto (JPG, JPEG, PNG) atau dokumen PDF.\n`;
+            }
+            
+            if (file.size > maxSizeBytes) {
+                hasError = true;
+                errorMessage += `- Berkas "${fileName}" terlalu besar (${fileSizeMB.toFixed(2)} MB). Maksimal ukuran file adalah 5 MB.\n`;
+            }
+        });
+        
+        if (hasError) {
+            // Tampilkan pesan peringatan besar & terperinci
+            alert("⚠️ BERKAS TIDAK VALID\n\n" + errorMessage + "\nSilakan pilih ulang berkas yang sesuai ketentuan.");
+            filesInput.value = ''; // Reset input agar tidak terunggah berkas rusak
+            return;
+        }
+        
         Array.from(files).forEach((file, index) => {
             const isImage = file.type.startsWith('image/');
             const col = document.createElement('div');
@@ -188,10 +216,10 @@
             card.innerHTML = `
                 ${previewHTML}
                 <div class="card-body p-0">
-                    <span class="d-block text-truncate font-weight-bold text-dark" style="font-size: 0.8rem;" title="${file.name}">${file.name}</span>
-                    <small class="text-muted d-block mb-2" style="font-size: 0.725rem;">${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+                    <span class="d-block text-truncate font-weight-bold text-dark" style="font-size: 0.85rem;" title="${file.name}">${file.name}</span>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">Ukuran: ${(file.size / 1024 / 1024).toFixed(2)} MB</small>
                     
-                    <input type="text" name="file_descriptions" class="form-control form-control-sm" placeholder="Tambahkan keterangan/keterangan foto..." style="font-size: 0.75rem;">
+                    <input type="text" name="file_descriptions" class="form-control form-control-sm" placeholder="Keterangan singkat berkas..." style="font-size: 0.8rem; padding: 6px;">
                 </div>
             `;
             

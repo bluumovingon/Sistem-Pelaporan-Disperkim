@@ -13,6 +13,8 @@ from openpyxl.utils import get_column_letter
 from pelaporan.models import User, Kegiatan, Laporan, Dokumentasi, RiwayatStatus, Notifikasi
 from pelaporan.forms import LaporanForm, KegiatanForm, UserForm
 from pelaporan.decorators import role_required
+from pelaporan.utils import compress_image
+import os
 
 # --- Auth & Redirects ---
 
@@ -71,9 +73,28 @@ def dashboard_view(request):
         
         recent_laporans = laporans.order_by('-updated_at')[:5]
         
+        # Peta Spasial Kegiatan PPTK
+        kegiatans_query = Kegiatan.objects.filter(pptk=user, latitude__isnull=False, longitude__isnull=False)
+        kegiatans_list = []
+        for k in kegiatans_query:
+            latest_laporan = k.laporan.order_by('-created_at').first()
+            status = latest_laporan.status if latest_laporan else 'belum_ada'
+            status_display = latest_laporan.get_status_display() if latest_laporan else 'Belum ada laporan'
+            kegiatans_list.append({
+                'id': k.id,
+                'judul': k.judul_kegiatan,
+                'tahun': k.tahun,
+                'pptk_nama': f"{k.pptk.first_name} {k.pptk.last_name}",
+                'latitude': k.latitude,
+                'longitude': k.longitude,
+                'status': status,
+                'status_display': status_display,
+            })
+        
         context = {
             'stats': stats,
             'recent_laporans': recent_laporans,
+            'kegiatans_list': kegiatans_list,
         }
         return render(request, 'dashboard/pptk.html', context)
         
@@ -99,12 +120,31 @@ def dashboard_view(request):
         # 3. Reports by PPTK
         pptk_chart_data = list(laporans.values('pptk__first_name', 'pptk__last_name').annotate(count=Count('id')))
         
+        # Peta Spasial Seluruh Kegiatan
+        kegiatans_query = Kegiatan.objects.filter(latitude__isnull=False, longitude__isnull=False)
+        kegiatans_list = []
+        for k in kegiatans_query:
+            latest_laporan = k.laporan.order_by('-created_at').first()
+            status = latest_laporan.status if latest_laporan else 'belum_ada'
+            status_display = latest_laporan.get_status_display() if latest_laporan else 'Belum ada laporan'
+            kegiatans_list.append({
+                'id': k.id,
+                'judul': k.judul_kegiatan,
+                'tahun': k.tahun,
+                'pptk_nama': f"{k.pptk.first_name} {k.pptk.last_name}",
+                'latitude': k.latitude,
+                'longitude': k.longitude,
+                'status': status,
+                'status_display': status_display,
+            })
+        
         context = {
             'stats': stats,
             'pending_reports': pending_reports[:10],
             'status_chart_data': status_chart_data,
             'month_chart_data': month_chart_data,
             'pptk_chart_data': pptk_chart_data,
+            'kegiatans_list': kegiatans_list,
         }
         return render(request, 'dashboard/admin.html', context)
 
@@ -175,6 +215,24 @@ def laporan_buat_view(request):
     if request.method == 'POST':
         form = LaporanForm(request.POST)
         form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
+        # Validate files first
+        files = request.FILES.getlist('files')
+        allowed_extensions = ['.jpg', '.jpeg', '.png', '.pdf']
+        max_size = 5 * 1024 * 1024 # 5MB
+        
+        file_errors = []
+        for f in files:
+            ext = os.path.splitext(f.name)[1].lower() if '.' in f.name else ''
+            if ext not in allowed_extensions:
+                file_errors.append(f"Berkas '{f.name}' memiliki format '{ext}' yang tidak diizinkan. (Hanya JPG, JPEG, PNG, PDF)")
+            if f.size > max_size:
+                file_errors.append(f"Berkas '{f.name}' melebihi batas ukuran 5MB.")
+                
+        if file_errors:
+            for err in file_errors:
+                messages.error(request, err)
+            return render(request, 'laporan/form.html', {'form': form, 'is_new': True})
+
         if form.is_valid():
             laporan = form.save(commit=False)
             laporan.pptk = request.user
@@ -198,13 +256,13 @@ def laporan_buat_view(request):
             )
             
             # Save files
-            files = request.FILES.getlist('files')
             file_descriptions = request.POST.getlist('file_descriptions')
             for i, f in enumerate(files):
                 desc = file_descriptions[i] if i < len(file_descriptions) else ''
+                compressed_f = compress_image(f)
                 Dokumentasi.objects.create(
                     laporan=laporan,
-                    file=f,
+                    file=compressed_f,
                     keterangan=desc
                 )
                 
@@ -265,6 +323,31 @@ def laporan_edit_view(request, pk):
     if request.method == 'POST':
         form = LaporanForm(request.POST, instance=laporan)
         form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user)
+        
+        # Validate files first
+        files = request.FILES.getlist('files')
+        allowed_extensions = ['.jpg', '.jpeg', '.png', '.pdf']
+        max_size = 5 * 1024 * 1024 # 5MB
+        
+        file_errors = []
+        for f in files:
+            ext = os.path.splitext(f.name)[1].lower() if '.' in f.name else ''
+            if ext not in allowed_extensions:
+                file_errors.append(f"Berkas '{f.name}' memiliki format '{ext}' yang tidak diizinkan. (Hanya JPG, JPEG, PNG, PDF)")
+            if f.size > max_size:
+                file_errors.append(f"Berkas '{f.name}' melebihi batas ukuran 5MB.")
+                
+        if file_errors:
+            for err in file_errors:
+                messages.error(request, err)
+            dokumentasis = laporan.dokumentasi.all()
+            return render(request, 'laporan/form.html', {
+                'form': form,
+                'laporan': laporan,
+                'dokumentasis': dokumentasis,
+                'is_new': False
+            })
+
         if form.is_valid():
             original_status = laporan.status
             laporan = form.save(commit=False)
@@ -298,13 +381,13 @@ def laporan_edit_view(request, pk):
                     )
             
             # Save files
-            files = request.FILES.getlist('files')
             file_descriptions = request.POST.getlist('file_descriptions')
             for i, f in enumerate(files):
                 desc = file_descriptions[i] if i < len(file_descriptions) else ''
+                compressed_f = compress_image(f)
                 Dokumentasi.objects.create(
                     laporan=laporan,
-                    file=f,
+                    file=compressed_f,
                     keterangan=desc
                 )
                 

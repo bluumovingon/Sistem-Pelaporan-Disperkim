@@ -2,6 +2,10 @@
 
 {% block title %}Dashboard PPTK{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+{% endblock %}
+
 {% block breadcrumb %}
     <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
 {% endblock %}
@@ -55,6 +59,18 @@
                     <h2 class="mb-0 font-weight-bold text-danger-emphasis">{{ stats.perlu_revisi }}</h2>
                 </div>
                 <div class="kpi-icon text-danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Peta Sebaran Proyek Section -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card card-premium">
+            <div class="card-header-premium"><i class="fa-solid fa-map-location-dot text-primary me-2"></i> Peta Sebaran Kegiatan Proyek Saya</div>
+            <div class="card-body p-0 position-relative">
+                <div id="map-dashboard" style="height: 350px; width: 100%; border-radius: 0 0 10px 10px; z-index: 1;"></div>
             </div>
         </div>
     </div>
@@ -142,4 +158,97 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet.js JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<!-- Serialize kegiatan spasial data safely -->
+{{ kegiatans_list|json_script:"kegiatans-data" }}
+
+<script>
+    // Initialize Leaflet Map
+    document.addEventListener("DOMContentLoaded", function() {
+        const kegiatans = JSON.parse(document.getElementById('kegiatans-data').textContent);
+        const map = L.map('map-dashboard').setView([-6.2088, 106.8456], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // Menentukan warna penanda berdasarkan status laporan terakhir
+        function getMarkerColor(status) {
+            switch (status) {
+                case 'draft': return '#6c757d';
+                case 'diajukan': return '#ff9100'; // Orange
+                case 'terverifikasi': return '#2e7d32'; // Green
+                case 'perlu_revisi': return '#c62828'; // Red
+                default: return '#1f4e78'; // Blue
+            }
+        }
+
+        // Membuat penanda kustom SVG yang berwarna tajam
+        function createCustomIcon(color) {
+            const svgIcon = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="32" height="32">
+                    <path fill="${color}" stroke="#ffffff" stroke-width="20" d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"/>
+                </svg>
+            `;
+            return L.divIcon({
+                html: svgIcon,
+                className: 'custom-leaflet-icon',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+        }
+
+        const bounds = [];
+
+        kegiatans.forEach(k => {
+            const lat = parseFloat(k.latitude);
+            const lng = parseFloat(k.longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                bounds.push([lat, lng]);
+                const color = getMarkerColor(k.status);
+                const icon = createCustomIcon(color);
+                
+                // Popup HTML dengan teks besar, kontras, mudah dibaca lansia
+                const popupContent = `
+                    <div style="font-family: 'Inter', sans-serif; padding: 4px; min-width: 220px; line-height: 1.5;">
+                        <h6 style="margin: 0 0 8px 0; font-weight: 700; color: #000000; font-size: 0.95rem;">${k.judul}</h6>
+                        <div style="font-size: 0.85rem; color: #333333; margin-bottom: 5px;">
+                            <i class="fa-solid fa-user me-1 text-secondary"></i> PPTK: <strong>${k.pptk_nama}</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #333333; margin-bottom: 5px;">
+                            <i class="fa-solid fa-calendar me-1 text-secondary"></i> Tahun: <strong>${k.tahun}</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; margin-bottom: 12px; color: #333333;">
+                            Status Terakhir: 
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; color: #ffffff; background-color: ${color};">
+                                ${k.status_display}
+                            </span>
+                        </div>
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 8px; text-align: right;">
+                            <a href="/laporan/buat/?kegiatan=${k.id}" style="text-decoration: none; font-size: 0.85rem; font-weight: 700; color: #1e88e5;">
+                                Buat Laporan Baru &rarr;
+                            </a>
+                        </div>
+                    </div>
+                `;
+                
+                L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup(popupContent);
+            }
+        });
+
+        // Fit peta ke seluruh marker jika ada data, jika tidak arahkan ke default
+        if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [40, 40] });
+        } else {
+            map.setView([-0.414, 116.991], 10);
+        }
+    });
+</script>
 {% endblock %}

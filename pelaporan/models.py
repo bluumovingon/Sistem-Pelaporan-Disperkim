@@ -24,6 +24,8 @@ class Kegiatan(models.Model):
     judul_kegiatan = models.CharField(max_length=255)
     pptk = models.ForeignKey(User, on_delete=models.CASCADE, related_name='kegiatan', limit_choices_to={'role': 'pptk'})
     tahun = models.IntegerField(default=datetime.datetime.now().year)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     
     class Meta:
         verbose_name = "Kegiatan"

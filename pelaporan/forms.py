@@ -16,11 +16,13 @@ class LaporanForm(forms.ModelForm):
 class KegiatanForm(forms.ModelForm):
     class Meta:
         model = Kegiatan
-        fields = ['judul_kegiatan', 'pptk', 'tahun']
+        fields = ['judul_kegiatan', 'pptk', 'tahun', 'latitude', 'longitude']
         widgets = {
             'judul_kegiatan': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama/Judul Kegiatan'}),
             'pptk': forms.Select(attrs={'class': 'form-select'}),
             'tahun': forms.NumberInput(attrs={'class': 'form-control'}),
+            'latitude': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: -6.2088', 'step': 'any'}),
+            'longitude': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: 106.8456', 'step': 'any'}),
         }
 
     def __init__(self, *args, **kwargs):
