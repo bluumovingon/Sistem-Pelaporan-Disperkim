@@ -27,7 +27,6 @@
                         <th>Judul Kegiatan</th>
                         <th>PPTK Penanggung Jawab</th>
                         <th>Tahun Anggaran</th>
-                        <th>Status</th>
                         <th class="text-end pe-4">Aksi</th>
                     </tr>
                 </thead>
@@ -36,64 +35,23 @@
                         {% for keg in kegiatans %}
                             <tr>
                                 <td class="ps-4 text-muted">{{ forloop.counter }}</td>
-                                <td class="font-weight-bold text-dark">
-                                    {{ keg.judul_kegiatan }}
-                                    {% if keg.status == 'ditolak' and keg.catatan_admin %}
-                                        <div class="text-danger font-weight-normal mt-1" style="font-size: 0.8rem;">
-                                            <i class="fa-solid fa-circle-exclamation me-1"></i> Catatan Penolakan: {{ keg.catatan_admin }}
-                                        </div>
-                                    {% endif %}
-                                </td>
+                                <td class="font-weight-bold text-dark">{{ keg.judul_kegiatan }}</td>
                                 <td>
                                     <div class="font-weight-bold text-dark">{{ keg.pptk.first_name }} {{ keg.pptk.last_name }}</div>
                                     <small class="text-muted" style="font-size: 0.75rem;">{{ keg.pptk.jabatan }}</small>
                                 </td>
                                 <td>{{ keg.tahun }}</td>
-                                <td>
-                                    {% if keg.status == 'diajukan' %}
-                                        <span class="badge bg-warning text-dark px-2.5 py-1.5 rounded"><i class="fa-solid fa-hourglass-half me-1"></i> Diajukan</span>
-                                    {% elif keg.status == 'disetujui' %}
-                                        <span class="badge bg-success px-2.5 py-1.5 rounded"><i class="fa-solid fa-circle-check me-1"></i> Disetujui (ACC)</span>
-                                    {% elif keg.status == 'ditolak' %}
-                                        <span class="badge bg-danger px-2.5 py-1.5 rounded"><i class="fa-solid fa-circle-xmark me-1"></i> Ditolak</span>
-                                    {% endif %}
-                                </td>
                                 <td class="text-end pe-4">
-                                    <div class="d-flex justify-content-end align-items-center gap-1">
-                                        {% if request.user.role in 'admin,super_admin' and keg.status == 'diajukan' %}
-                                            <form action="{% url 'kegiatan_verifikasi' keg.pk %}" method="POST" class="d-inline mb-0">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="approve">
-                                                <button type="submit" class="btn btn-sm btn-success py-1" style="border-radius: 6px;" onclick="return confirm('Apakah Anda yakin ingin menyetujui kegiatan ini?')" title="Setujui"><i class="fa-solid fa-check"></i> Setuju</button>
-                                            </form>
-                                            <button type="button" class="btn btn-sm btn-outline-danger py-1" style="border-radius: 6px;" title="Tolak" data-bs-toggle="collapse" data-bs-target="#rejectForm-{{ keg.pk }}"><i class="fa-solid fa-xmark"></i> Tolak</button>
-                                        {% endif %}
-                                        
-                                        <a href="{% url 'kegiatan_edit' keg.pk %}" class="btn btn-sm btn-light border py-1" style="border-radius: 6px;" title="Edit"><i class="fa-solid fa-pen-to-square text-warning"></i> Edit</a>
-                                        <a href="{% url 'kegiatan_hapus' keg.pk %}" class="btn btn-sm btn-light border py-1" style="border-radius: 6px;" title="Hapus" onclick="return confirm('Apakah Anda yakin ingin menghapus data Kegiatan ini?')"><i class="fa-solid fa-trash text-danger"></i></a>
-                                    </div>
-                                    
-                                    {% if request.user.role in 'admin,super_admin' and keg.status == 'diajukan' %}
-                                        <div class="collapse mt-2" id="rejectForm-{{ keg.pk }}">
-                                            <form action="{% url 'kegiatan_verifikasi' keg.pk %}" method="POST" class="card card-body p-2 border-danger text-start ms-auto" style="max-width: 250px; font-size: 0.8rem;">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="reject">
-                                                <label class="form-label small font-weight-bold text-danger mb-1">Alasan Penolakan <span class="text-danger">*</span></label>
-                                                <textarea name="catatan_admin" class="form-control form-control-sm mb-2" rows="2" required placeholder="Tulis alasan penolakan..."></textarea>
-                                                <div class="d-flex justify-content-end">
-                                                    <button type="submit" class="btn btn-danger py-0.5 px-2" style="font-size: 0.75rem; border-radius: 4px;">Kirim</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    {% endif %}
+                                    <a href="{% url 'kegiatan_edit' keg.pk %}" class="btn btn-sm btn-light border py-1" style="border-radius: 6px;" title="Edit"><i class="fa-solid fa-pen-to-square text-warning"></i> Edit</a>
+                                    <a href="{% url 'kegiatan_hapus' keg.pk %}" class="btn btn-sm btn-light border py-1" style="border-radius: 6px;" title="Hapus" onclick="return confirm('Apakah Anda yakin ingin menghapus data Kegiatan ini?')"><i class="fa-solid fa-trash text-danger"></i></a>
                                 </td>
                             </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
+                            <td colspan="5" class="text-center py-5 text-muted">
                                 <i class="fa-solid fa-folder-minus fs-3 mb-2 d-block"></i>
-                                Data Kegiatan masih kosong atau belum ada yang diajukan.
+                                Data Kegiatan masih kosong.
                             </td>
                         </tr>
                     {% endif %}

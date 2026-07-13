@@ -815,12 +815,9 @@ def kegiatan_tambah_view(request):
             kegiatan = form.save(commit=False)
             if request.user.role == 'pptk':
                 kegiatan.pptk = request.user
-                kegiatan.status = 'diajukan'
-                messages.success(request, "Usulan Kegiatan berhasil ditambahkan dan menunggu persetujuan (ACC) Admin.")
-            else:
-                kegiatan.status = 'disetujui'
-                messages.success(request, "Data Kegiatan berhasil ditambahkan.")
+            kegiatan.status = 'disetujui' # Langsung aktif/disetujui secara otomatis
             kegiatan.save()
+            messages.success(request, "Data Kegiatan berhasil ditambahkan.")
             return redirect('kegiatan_list')
     else:
         form = KegiatanForm()
@@ -845,11 +842,9 @@ def kegiatan_edit_view(request, pk):
             kegiatan = form.save(commit=False)
             if request.user.role == 'pptk':
                 kegiatan.pptk = request.user
-                kegiatan.status = 'diajukan'
-                messages.success(request, "Data Kegiatan diperbarui dan diajukan ulang untuk persetujuan Admin.")
-            else:
-                messages.success(request, "Data Kegiatan berhasil diperbarui.")
+            kegiatan.status = 'disetujui' # Tetap disetujui saat diedit
             kegiatan.save()
+            messages.success(request, "Data Kegiatan berhasil diperbarui.")
             return redirect('kegiatan_list')
     else:
         form = KegiatanForm(instance=kegiatan)
