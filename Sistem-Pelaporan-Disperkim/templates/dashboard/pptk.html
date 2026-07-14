@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard PPTK{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+{% endblock %}
+
+{% block page_title %}Dashboard PPTK{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- KPI Cards -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-premium kpi-card kpi-draft h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted mb-1" style="font-size: 0.85rem; font-weight: 600;">Draft Laporan</h6>
+                    <h2 class="mb-0 font-weight-bold">{{ stats.draft }}</h2>
+                </div>
+                <div class="kpi-icon text-secondary"><i class="fa-solid fa-file-lines"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-premium kpi-card kpi-diajukan h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted mb-1" style="font-size: 0.85rem; font-weight: 600;">Diajukan (Review)</h6>
+                    <h2 class="mb-0 font-weight-bold text-warning-emphasis">{{ stats.diajukan }}</h2>
+                </div>
+                <div class="kpi-icon text-warning"><i class="fa-solid fa-file-export"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-premium kpi-card kpi-terverifikasi h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted mb-1" style="font-size: 0.85rem; font-weight: 600;">Terverifikasi</h6>
+                    <h2 class="mb-0 font-weight-bold text-success-emphasis">{{ stats.terverifikasi }}</h2>
+                </div>
+                <div class="kpi-icon text-success"><i class="fa-solid fa-square-check"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-premium kpi-card kpi-revisi h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted mb-1" style="font-size: 0.85rem; font-weight: 600;">Perlu Revisi</h6>
+                    <h2 class="mb-0 font-weight-bold text-danger-emphasis">{{ stats.perlu_revisi }}</h2>
+                </div>
+                <div class="kpi-icon text-danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Peta Sebaran Proyek Section -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card card-premium">
+            <div class="card-header-premium"><i class="fa-solid fa-map-location-dot text-primary me-2"></i> Peta Sebaran Kegiatan Proyek Saya</div>
+            <div class="card-body p-0 position-relative">
+                <div id="map-dashboard" style="height: 350px; width: 100%; border-radius: 0 0 10px 10px; z-index: 1;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Quick Actions -->
+    <div class="col-12 col-lg-4">
+        <div class="card card-premium h-100">
+            <div class="card-header-premium"><i class="fa-solid fa-bolt text-primary me-2"></i> Aksi Cepat</div>
+            <div class="card-body d-flex flex-column justify-content-center py-4">
+                <p class="text-muted text-center mb-4" style="font-size: 0.9rem;">
+                    Kelola kegiatan dan kirim laporan perkembangan fisik lapangan Anda secara langsung untuk diperiksa oleh Admin Dinas.
+                </p>
+                <a href="{% url 'laporan_buat' %}" class="btn btn-primary btn-lg py-3 shadow border-0 mb-3" style="background-color: var(--primary-color); border-radius: 10px;">
+                    <i class="fa-solid fa-circle-plus me-2"></i> Buat Laporan Baru
+                </a>
+                <a href="{% url 'kegiatan_tambah' %}" class="btn btn-outline-primary btn-lg py-3 shadow-sm border-1" style="border-radius: 10px;">
+                    <i class="fa-solid fa-folder-plus me-2"></i> Tambah Kegiatan Baru
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Reports Table -->
+    <div class="col-12 col-lg-8">
+        <div class="card card-premium h-100">
+            <div class="card-header-premium d-flex align-items-center justify-content-between">
+                <span><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i> Pembaruan Laporan Terakhir</span>
+                <a href="{% url 'laporan_list' %}" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;">Lihat Semua</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Kegiatan</th>
+                                <th>Bulan</th>
+                                <th>Tanggal Diperbarui</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recent_laporans %}
+                                {% for lap in recent_laporans %}
+                                    <tr>
+                                        <td class="ps-4 font-weight-bold">
+                                            <div class="font-weight-bold text-dark">{{ lap.kegiatan.judul_kegiatan }}</div>
+                                            <small class="text-muted" style="font-size: 0.75rem;">Tahun Anggaran: {{ lap.kegiatan.tahun }}</small>
+                                        </td>
+                                        <td>{{ lap.bulan_laporan }}</td>
+                                        <td class="text-muted">{{ lap.updated_at|date:"d M Y, H:i" }} WIB</td>
+                                        <td>
+                                            {% if lap.status == 'draft' %}
+                                                <span class="badge-status badge-draft"><i class="fa-regular fa-file-lines me-1"></i> {{ lap.get_status_display }}</span>
+                                            {% elif lap.status == 'diajukan' %}
+                                                <span class="badge-status badge-diajukan"><i class="fa-solid fa-hourglass-half me-1"></i> {{ lap.get_status_display }}</span>
+                                            {% elif lap.status == 'terverifikasi' %}
+                                                <span class="badge-status badge-terverifikasi"><i class="fa-solid fa-check-double me-1"></i> {{ lap.get_status_display }}</span>
+                                            {% elif lap.status == 'perlu_revisi' %}
+                                                <span class="badge-status badge-revisi"><i class="fa-solid fa-circle-exclamation me-1"></i> {{ lap.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'laporan_detail' lap.pk %}" class="btn btn-sm btn-light border" style="border-radius: 6px;" title="Lihat detail"><i class="fa-solid fa-eye text-primary"></i> Detail</a>
+                                            {% if lap.status == 'draft' or lap.status == 'perlu_revisi' %}
+                                                <a href="{% url 'laporan_edit' lap.pk %}" class="btn btn-sm btn-light border ms-1" style="border-radius: 6px;" title="Edit"><i class="fa-solid fa-pen-to-square text-warning"></i></a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fa-regular fa-file-excel fs-3 mb-2 d-block"></i>
+                                        Belum ada laporan yang Anda buat.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet.js JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<!-- Serialize kegiatan spasial data safely -->
+{{ kegiatans_list|json_script:"kegiatans-data" }}
+
+<script>
+    // Initialize Leaflet Map
+    document.addEventListener("DOMContentLoaded", function() {
+        const kegiatans = JSON.parse(document.getElementById('kegiatans-data').textContent);
+        const map = L.map('map-dashboard').setView([-6.2088, 106.8456], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // Menentukan warna penanda berdasarkan status laporan terakhir
+        function getMarkerColor(status) {
+            switch (status) {
+                case 'draft': return '#6c757d';
+                case 'diajukan': return '#ff9100'; // Orange
+                case 'terverifikasi': return '#2e7d32'; // Green
+                case 'perlu_revisi': return '#c62828'; // Red
+                default: return '#1f4e78'; // Blue
+            }
+        }
+
+        // Membuat penanda kustom SVG yang berwarna tajam
+        function createCustomIcon(color) {
+            const svgIcon = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="32" height="32">
+                    <path fill="${color}" stroke="#ffffff" stroke-width="20" d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"/>
+                </svg>
+            `;
+            return L.divIcon({
+                html: svgIcon,
+                className: 'custom-leaflet-icon',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+        }
+
+        const bounds = [];
+
+        kegiatans.forEach(k => {
+            const lat = parseFloat(k.latitude);
+            const lng = parseFloat(k.longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                bounds.push([lat, lng]);
+                const color = getMarkerColor(k.status);
+                const icon = createCustomIcon(color);
+                
+                // Popup HTML dengan teks besar, kontras, mudah dibaca lansia
+                const popupContent = `
+                    <div style="font-family: 'Inter', sans-serif; padding: 4px; min-width: 220px; line-height: 1.5;">
+                        <h6 style="margin: 0 0 8px 0; font-weight: 700; color: #000000; font-size: 0.95rem;">${k.judul}</h6>
+                        <div style="font-size: 0.85rem; color: #333333; margin-bottom: 5px;">
+                            <i class="fa-solid fa-user me-1 text-secondary"></i> PPTK: <strong>${k.pptk_nama}</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #333333; margin-bottom: 5px;">
+                            <i class="fa-solid fa-calendar me-1 text-secondary"></i> Tahun: <strong>${k.tahun}</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; margin-bottom: 12px; color: #333333;">
+                            Status Terakhir: 
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; color: #ffffff; background-color: ${color};">
+                                ${k.status_display}
+                            </span>
+                        </div>
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 8px; text-align: right;">
+                            <a href="/laporan/buat/?kegiatan=${k.id}" style="text-decoration: none; font-size: 0.85rem; font-weight: 700; color: #1e88e5;">
+                                Buat Laporan Baru &rarr;
+                            </a>
+                        </div>
+                    </div>
+                `;
+                
+                L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup(popupContent);
+            }
+        });
+
+        // Fit peta ke seluruh marker jika ada data, jika tidak arahkan ke default
+        if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [40, 40] });
+        } else {
+            map.setView([-0.414, 116.991], 10);
+        }
+    });
+</script>
+{% endblock %}

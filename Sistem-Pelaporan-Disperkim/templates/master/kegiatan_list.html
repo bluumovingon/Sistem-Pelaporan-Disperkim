@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Kelola Kegiatan{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item"><a href="#" class="text-decoration-none">Master Data</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Kegiatan</li>
+{% endblock %}
+
+{% block page_title %}Manajemen Data Kegiatan{% endblock %}
+
+{% block content %}
+<div class="card card-premium">
+    <div class="card-header-premium d-flex align-items-center justify-content-between">
+        <span><i class="fa-solid fa-folder-open text-primary me-2"></i> Daftar Program & Kegiatan Pengawasan Lapangan</span>
+        <a href="{% url 'kegiatan_tambah' %}" class="btn btn-sm btn-primary" style="background-color: var(--primary-color); border-color: var(--primary-color); border-radius: 6px;">
+            <i class="fa-solid fa-plus me-1"></i> Tambah Kegiatan
+        </a>
+    </div>
+    
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">No</th>
+                        <th>Judul Kegiatan</th>
+                        <th>PPTK Penanggung Jawab</th>
+                        <th>Tahun Anggaran</th>
+                        <th class="text-end pe-4">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if kegiatans %}
+                        {% for keg in kegiatans %}
+                            <tr>
+                                <td class="ps-4 text-muted">{{ forloop.counter }}</td>
+                                <td class="font-weight-bold text-dark">{{ keg.judul_kegiatan }}</td>
+                                <td>
+                                    <div class="font-weight-bold text-dark">{{ keg.pptk.first_name }} {{ keg.pptk.last_name }}</div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">{{ keg.pptk.jabatan }}</small>
+                                </td>
+                                <td>{{ keg.tahun }}</td>
+                                <td class="text-end pe-4">
+                                    <a href="{% url 'kegiatan_edit' keg.pk %}" class="btn btn-sm btn-light border py-1" style="border-radius: 6px;" title="Edit"><i class="fa-solid fa-pen-to-square text-warning"></i> Edit</a>
+                                    <a href="{% url 'kegiatan_hapus' keg.pk %}" class="btn btn-sm btn-light border py-1" style="border-radius: 6px;" title="Hapus" onclick="return confirm('Apakah Anda yakin ingin menghapus data Kegiatan ini?')"><i class="fa-solid fa-trash text-danger"></i></a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fa-solid fa-folder-minus fs-3 mb-2 d-block"></i>
+                                Data Kegiatan masih kosong.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+            <nav aria-label="Navigasi Halaman" class="d-flex justify-content-center py-3 border-top">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Pertama">
+                                <span aria-hidden="true">&laquo;&laquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Sebelumnya">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Berikutnya">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Terakhir">
+                                <span aria-hidden="true">&raquo;&raquo;</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
