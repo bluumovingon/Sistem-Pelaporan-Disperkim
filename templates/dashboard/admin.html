@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+{% endblock %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+{% endblock %}
+
+{% block page_title %}Dashboard Pengawasan Lapangan{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- KPI Cards -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-premium kpi-card kpi-draft h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted mb-1" style="font-size: 0.85rem; font-weight: 600;">Total Laporan</h6>
+                    <h2 class="mb-0 font-weight-bold">{{ stats.total }}</h2>
+                </div>
+                <div class="kpi-icon text-secondary"><i class="fa-solid fa-folder-tree"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-premium kpi-card kpi-diajukan h-100 animate-pulse">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted mb-1" style="font-size: 0.85rem; font-weight: 600;">Butuh Verifikasi</h6>
+                    <h2 class="mb-0 font-weight-bold text-warning-emphasis">{{ stats.diajukan }}</h2>
+                </div>
+                <div class="kpi-icon text-warning"><i class="fa-solid fa-bell"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-premium kpi-card kpi-terverifikasi h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted mb-1" style="font-size: 0.85rem; font-weight: 600;">Terverifikasi</h6>
+                    <h2 class="mb-0 font-weight-bold text-success-emphasis">{{ stats.terverifikasi }}</h2>
+                </div>
+                <div class="kpi-icon text-success"><i class="fa-solid fa-circle-check"></i></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-premium kpi-card kpi-revisi h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted mb-1" style="font-size: 0.85rem; font-weight: 600;">Sedang Direvisi</h6>
+                    <h2 class="mb-0 font-weight-bold text-danger-emphasis">{{ stats.perlu_revisi }}</h2>
+                </div>
+                <div class="kpi-icon text-danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Peta Sebaran Proyek Section -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card card-premium">
+            <div class="card-header-premium"><i class="fa-solid fa-map-location-dot text-primary me-2"></i> Peta Sebaran Kegiatan Pengawasan Lapangan</div>
+            <div class="card-body p-0 position-relative">
+                <div id="map-dashboard" style="height: 400px; width: 100%; border-radius: 0 0 10px 10px; z-index: 1;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card card-premium h-100">
+            <div class="card-header-premium"><i class="fa-solid fa-pie-chart text-primary me-2"></i> Status Laporan</div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="height: 250px;">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card card-premium h-100">
+            <div class="card-header-premium"><i class="fa-solid fa-chart-column text-primary me-2"></i> Laporan per Bulan</div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="height: 250px;">
+                <canvas id="monthChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-xl-4">
+        <div class="card card-premium h-100">
+            <div class="card-header-premium"><i class="fa-solid fa-chart-bar text-primary me-2"></i> Keaktifan PPTK</div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="height: 250px;">
+                <canvas id="pptkChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Verification Queue -->
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card card-premium">
+            <div class="card-header-premium d-flex align-items-center justify-content-between">
+                <span><i class="fa-solid fa-list-check text-primary me-2"></i> Antrean Verifikasi Laporan Masuk (Status: Diajukan)</span>
+                <a href="{% url 'laporan_list' %}?status=diajukan" class="btn btn-sm btn-outline-primary" style="border-radius: 6px;">Lihat Semua Antrean</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">PPTK Pelapor</th>
+                                <th>Nama Kegiatan / Proyek</th>
+                                <th>Bulan</th>
+                                <th>Tanggal Masuk</th>
+                                <th class="text-end pe-4">Aksi Verifikasi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if pending_reports %}
+                                {% for lap in pending_reports %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="font-weight-bold text-dark">{{ lap.pptk.first_name }} {{ lap.pptk.last_name }}</div>
+                                            <small class="text-muted" style="font-size: 0.75rem;">{{ lap.pptk.unit_kerja }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="font-weight-bold text-dark">{{ lap.kegiatan.judul_kegiatan }}</div>
+                                            <small class="text-muted" style="font-size: 0.75rem;">Tahun Anggaran: {{ lap.kegiatan.tahun }}</small>
+                                        </td>
+                                        <td>{{ lap.bulan_laporan }}</td>
+                                        <td class="text-muted">{{ lap.created_at|date:"d M Y, H:i" }} WIB</td>
+                                        <td class="text-end pe-4">
+                                            <a href="{% url 'laporan_detail' lap.pk %}" class="btn btn-sm btn-primary border-0 shadow-sm" style="background-color: var(--primary-color); border-radius: 6px;">
+                                                <i class="fa-solid fa-magnifying-glass me-1"></i> Periksa & Verifikasi
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-circle-check text-success fs-3 mb-2 d-block"></i>
+                                        Semua laporan telah diverifikasi. Antrean kosong!
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet.js JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Serialize kegiatan spasial data safely -->
+{{ kegiatans_list|json_script:"kegiatans-data" }}
+
+<script>
+    // Initialize Leaflet Map
+    document.addEventListener("DOMContentLoaded", function() {
+        const kegiatans = JSON.parse(document.getElementById('kegiatans-data').textContent);
+        const map = L.map('map-dashboard').setView([-6.2088, 106.8456], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // Menentukan warna penanda berdasarkan status laporan terakhir
+        function getMarkerColor(status) {
+            switch (status) {
+                case 'draft': return '#6c757d';
+                case 'diajukan': return '#ff9100'; // Orange
+                case 'terverifikasi': return '#2e7d32'; // Green
+                case 'perlu_revisi': return '#c62828'; // Red
+                default: return '#1f4e78'; // Blue
+            }
+        }
+
+        // Membuat penanda kustom SVG yang berwarna tajam
+        function createCustomIcon(color) {
+            const svgIcon = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="32" height="32">
+                    <path fill="${color}" stroke="#ffffff" stroke-width="20" d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"/>
+                </svg>
+            `;
+            return L.divIcon({
+                html: svgIcon,
+                className: 'custom-leaflet-icon',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+        }
+
+        const bounds = [];
+
+        kegiatans.forEach(k => {
+            const lat = parseFloat(k.latitude);
+            const lng = parseFloat(k.longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                bounds.push([lat, lng]);
+                const color = getMarkerColor(k.status);
+                const icon = createCustomIcon(color);
+                
+                // Popup HTML dengan teks besar, kontras, mudah dibaca lansia
+                const popupContent = `
+                    <div style="font-family: 'Inter', sans-serif; padding: 4px; min-width: 220px; line-height: 1.5;">
+                        <h6 style="margin: 0 0 8px 0; font-weight: 700; color: #000000; font-size: 0.95rem;">${k.judul}</h6>
+                        <div style="font-size: 0.85rem; color: #333333; margin-bottom: 5px;">
+                            <i class="fa-solid fa-user me-1 text-secondary"></i> PPTK: <strong>${k.pptk_nama}</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #333333; margin-bottom: 5px;">
+                            <i class="fa-solid fa-calendar me-1 text-secondary"></i> Tahun: <strong>${k.tahun}</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; margin-bottom: 12px; color: #333333;">
+                            Status Terakhir: 
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; color: #ffffff; background-color: ${color};">
+                                ${k.status_display}
+                            </span>
+                        </div>
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 8px; text-align: right;">
+                            <a href="/laporan/?kegiatan=${k.id}" style="text-decoration: none; font-size: 0.85rem; font-weight: 700; color: #1e88e5;">
+                                Detail Laporan &rarr;
+                            </a>
+                        </div>
+                    </div>
+                `;
+                
+                L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup(popupContent);
+            }
+        });
+
+        // Fit peta ke seluruh marker jika ada data, jika tidak arahkan ke default
+        if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [40, 40] });
+        } else {
+            map.setView([-0.414, 116.991], 10);
+        }
+    });
+
+    // Status Chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    const statusData = {
+        labels: ['Draft', 'Diajukan', 'Terverifikasi', 'Perlu Revisi'],
+        datasets: [{
+            data: [
+                {{ stats.draft|default:0 }},
+                {{ stats.diajukan|default:0 }},
+                {{ stats.terverifikasi|default:0 }},
+                {{ stats.perlu_revisi|default:0 }}
+            ],
+            backgroundColor: ['#6c757d', '#f9a825', '#2e7d32', '#c62828'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+        }]
+    };
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: statusData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+            },
+            cutout: '65%'
+        }
+    });
+
+    // Month Chart
+    const monthCtx = document.getElementById('monthChart').getContext('2d');
+    // Prepare data
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const monthCounts = Array(12).fill(0);
+    const indonesianMonths = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    
+    {% for item in month_chart_data %}
+        var mIndex = indonesianMonths.indexOf("{{ item.bulan_laporan }}");
+        if(mIndex !== -1) {
+            monthCounts[mIndex] = {{ item.count }};
+        }
+    {% endfor %}
+
+    new Chart(monthCtx, {
+        type: 'bar',
+        data: {
+            labels: monthLabels,
+            datasets: [{
+                label: 'Jumlah Laporan',
+                data: monthCounts,
+                backgroundColor: '#1f4e78',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } },
+                x: { ticks: { font: { size: 10 } } }
+            }
+        }
+    });
+
+    // PPTK Chart
+    const pptkCtx = document.getElementById('pptkChart').getContext('2d');
+    const pptkNames = [];
+    const pptkCounts = [];
+    
+    {% for item in pptk_chart_data %}
+        pptkNames.push("{{ item.pptk__first_name }} {{ item.pptk__last_name }}");
+        pptkCounts.push({{ item.count }});
+    {% endfor %}
+
+    new Chart(pptkCtx, {
+        type: 'bar',
+        data: {
+            labels: pptkNames.length ? pptkNames : ['Belum ada PPTK'],
+            datasets: [{
+                label: 'Laporan',
+                data: pptkCounts.length ? pptkCounts : [0],
+                backgroundColor: '#3b82f6',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } },
+                y: { ticks: { font: { size: 10 } } }
+            }
+        }
+    });
+</script>
+<style>
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+    }
+    .animate-pulse {
+        animation: none;
+    }
+    .animate-pulse:has(.text-warning-emphasis:not(:contains("0"))) {
+        border-left-color: #ff9100;
+        box-shadow: 0 0 10px rgba(249, 168, 37, 0.2);
+    }
+</style>
+{% endblock %}
