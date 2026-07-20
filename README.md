@@ -16,6 +16,11 @@ SIPAWAS adalah aplikasi berbasis web internal yang dirancang untuk memfasilitasi
   - **Excel**: Mengunduh data terverifikasi dalam format `.xlsx` rapi via `openpyxl`.
   - **PDF**: Pratinjau cetak resmi berformat Kop Surat Dinas dan kolom tanda tangan pengawas & PPTK.
 - **Sistem Notifikasi**: Pemberitahuan *in-app* otomatis untuk pengajuan laporan baru dan pembaruan status laporan.
+- **Fitur Keamanan Terintegrasi**:
+  - **Rate Limiting Proxy-Aware**: Mencegah serangan Brute Force menggunakan deteksi IP asli klien di belakang reverse proxy.
+  - **Validasi Berkas Berbasis Signature**: Memeriksa *magic bytes* berkas unggahan untuk mencegah RCE dan Stored XSS.
+  - **Transaksi Database Atomik**: Menggunakan `@transaction.atomic` pada perubahan status dan unggahan data untuk integritas database.
+  - **Proteksi BFLA**: Pembatasan hak akses ketat (RBAC) pada level fungsi untuk menghentikan akses tak berizin.
 
 ---
 
@@ -94,6 +99,12 @@ Nyalakan server lokal Django:
 python manage.py runserver
 ```
 Buka browser Anda dan akses aplikasi melalui alamat: **[http://127.0.0.1:8000/](http://127.0.0.1:8000/)**
+
+### 8. Jalankan Unit Test Keamanan & Logika
+Gunakan perintah berikut untuk memverifikasi fungsionalitas proteksi keamanan, validasi berkas, dan keandalan logika bisnis:
+```bash
+python manage.py test
+```
 
 ---
 

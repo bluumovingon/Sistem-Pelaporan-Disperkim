@@ -13,7 +13,8 @@ from openpyxl.utils import get_column_letter
 from pelaporan.models import User, Kegiatan, Laporan, Dokumentasi, RiwayatStatus, Notifikasi
 from pelaporan.forms import LaporanForm, KegiatanForm, UserForm
 from pelaporan.decorators import role_required
-from pelaporan.utils import compress_image
+from pelaporan.utils import compress_image, validate_file_signature
+from django.db import transaction
 import os
 
 # --- Auth & Redirects ---
@@ -26,12 +27,20 @@ def home_redirect(request):
 
 from django.core.cache import cache
 
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
         
     # Rate Limiting Lockout berdasarkan IP
-    ip = request.META.get('REMOTE_ADDR')
+    ip = get_client_ip(request)
     lockout_key = f"lockout_{ip}"
     attempts_key = f"attempts_{ip}"
     
@@ -258,10 +267,9 @@ def laporan_list_view(request):
         }
     }
     return render(request, 'laporan/list.html', context)
-
-
 @login_required
 @role_required('pptk')
+@transaction.atomic
 def laporan_buat_view(request):
     if request.method == 'POST':
         form = LaporanForm(request.POST)
@@ -276,6 +284,8 @@ def laporan_buat_view(request):
             ext = os.path.splitext(f.name)[1].lower() if '.' in f.name else ''
             if ext not in allowed_extensions:
                 file_errors.append(f"Berkas '{f.name}' memiliki format '{ext}' yang tidak diizinkan. (Hanya JPG, JPEG, PNG, PDF)")
+            elif not validate_file_signature(f):
+                file_errors.append(f"Berkas '{f.name}' tidak valid atau isi berkas tidak cocok dengan ekstensinya.")
             if f.size > max_size:
                 file_errors.append(f"Berkas '{f.name}' melebihi batas ukuran 5MB.")
                 
@@ -355,10 +365,9 @@ def laporan_detail_view(request, pk):
         'dokumentasis': dokumentasis,
     }
     return render(request, 'laporan/detail.html', context)
-
-
 @login_required
 @role_required('pptk')
+@transaction.atomic
 def laporan_edit_view(request, pk):
     laporan = get_object_or_404(Laporan, pk=pk)
     
@@ -374,6 +383,7 @@ def laporan_edit_view(request, pk):
     if request.method == 'POST':
         form = LaporanForm(request.POST, instance=laporan)
         form.fields['kegiatan'].queryset = Kegiatan.objects.filter(pptk=request.user, status='disetujui')
+        dokumentasis = laporan.dokumentasi.all()
         
         # Validate files first
         files = request.FILES.getlist('files')
@@ -385,13 +395,14 @@ def laporan_edit_view(request, pk):
             ext = os.path.splitext(f.name)[1].lower() if '.' in f.name else ''
             if ext not in allowed_extensions:
                 file_errors.append(f"Berkas '{f.name}' memiliki format '{ext}' yang tidak diizinkan. (Hanya JPG, JPEG, PNG, PDF)")
+            elif not validate_file_signature(f):
+                file_errors.append(f"Berkas '{f.name}' tidak valid atau isi berkas tidak cocok dengan ekstensinya.")
             if f.size > max_size:
                 file_errors.append(f"Berkas '{f.name}' melebihi batas ukuran 5MB.")
                 
         if file_errors:
             for err in file_errors:
                 messages.error(request, err)
-            dokumentasis = laporan.dokumentasi.all()
             return render(request, 'laporan/form.html', {
                 'form': form,
                 'laporan': laporan,
@@ -460,6 +471,7 @@ def laporan_edit_view(request, pk):
 
 @login_required
 @role_required('admin', 'super_admin')
+@transaction.atomic
 def laporan_verifikasi_view(request, pk):
     laporan = get_object_or_404(Laporan, pk=pk)
     
@@ -534,6 +546,10 @@ def laporan_hapus_view(request, pk):
         return redirect('laporan_detail', pk=laporan.pk)
         
     # Auth constraint
+    if request.user.role == 'pimpinan':
+        messages.error(request, "Anda tidak diperbolehkan menghapus laporan.")
+        return redirect('dashboard')
+
     if request.user.role == 'pptk':
         if laporan.pptk != request.user:
             messages.error(request, "Anda tidak diizinkan menghapus laporan ini.")
@@ -562,6 +578,10 @@ def dokumentasi_hapus_view(request, pk):
     laporan = doc.laporan
     
     # Auth constraint
+    if request.user.role == 'pimpinan':
+        messages.error(request, "Anda tidak diperbolehkan menghapus dokumentasi.")
+        return redirect('dashboard')
+        
     if request.user.role == 'pptk' and laporan.pptk != request.user:
         return HttpResponseRedirect(request.META.get('HTTP_REFERER', reverse('dashboard')))
         
@@ -806,6 +826,7 @@ def kegiatan_list_view(request):
 
 @login_required
 @role_required('admin', 'super_admin', 'pptk')
+@transaction.atomic
 def kegiatan_tambah_view(request):
     if request.method == 'POST':
         form = KegiatanForm(request.POST)
@@ -815,9 +836,13 @@ def kegiatan_tambah_view(request):
             kegiatan = form.save(commit=False)
             if request.user.role == 'pptk':
                 kegiatan.pptk = request.user
-            kegiatan.status = 'disetujui' # Langsung aktif/disetujui secara otomatis
+                kegiatan.status = 'diajukan' # Diajukan untuk persetujuan admin
+                success_msg = "Usulan Kegiatan berhasil ditambahkan dan menunggu persetujuan Admin."
+            else:
+                kegiatan.status = 'disetujui'
+                success_msg = "Data Kegiatan berhasil ditambahkan."
             kegiatan.save()
-            messages.success(request, "Data Kegiatan berhasil ditambahkan.")
+            messages.success(request, success_msg)
             return redirect('kegiatan_list')
     else:
         form = KegiatanForm()
@@ -828,6 +853,7 @@ def kegiatan_tambah_view(request):
 
 @login_required
 @role_required('admin', 'super_admin', 'pptk')
+@transaction.atomic
 def kegiatan_edit_view(request, pk):
     kegiatan = get_object_or_404(Kegiatan, pk=pk)
     if request.user.role == 'pptk' and kegiatan.pptk != request.user:
@@ -842,9 +868,13 @@ def kegiatan_edit_view(request, pk):
             kegiatan = form.save(commit=False)
             if request.user.role == 'pptk':
                 kegiatan.pptk = request.user
-            kegiatan.status = 'disetujui' # Tetap disetujui saat diedit
+                kegiatan.status = 'diajukan' # Diajukan kembali untuk persetujuan admin setelah diedit oleh pptk
+                success_msg = "Perubahan Kegiatan berhasil diajukan dan menunggu persetujuan Admin."
+            else:
+                kegiatan.status = 'disetujui'
+                success_msg = "Data Kegiatan berhasil diperbarui."
             kegiatan.save()
-            messages.success(request, "Data Kegiatan berhasil diperbarui.")
+            messages.success(request, success_msg)
             return redirect('kegiatan_list')
     else:
         form = KegiatanForm(instance=kegiatan)
@@ -989,6 +1019,7 @@ def serve_dokumentasi_view(request, filename):
 
 @login_required
 @role_required('admin', 'super_admin')
+@transaction.atomic
 def kegiatan_verifikasi_view(request, pk):
     kegiatan = get_object_or_404(Kegiatan, pk=pk)
     

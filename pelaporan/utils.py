@@ -59,3 +59,28 @@ def compress_image(uploaded_file, max_width=1200, quality=75):
     except Exception:
         # Jika kompresi gagal karena alasan apa pun, kembalikan berkas asli
         return uploaded_file
+
+
+def validate_file_signature(uploaded_file):
+    """
+    Validates uploaded file by checking its magic bytes (file signature).
+    Returns True if valid image (JPEG/PNG) or PDF, False otherwise.
+    """
+    try:
+        # Read the first 8 bytes
+        header = uploaded_file.read(8)
+        # Seek back to the beginning so subsequent reads work correctly
+        uploaded_file.seek(0)
+        
+        # Check signatures
+        if header.startswith(b'\xff\xd8\xff'): # JPEG
+            return True
+        if header.startswith(b'\x89PNG\r\n\x1a\n'): # PNG
+            return True
+        if header.startswith(b'%PDF-'): # PDF
+            return True
+    except Exception:
+        pass
+        
+    return False
+
