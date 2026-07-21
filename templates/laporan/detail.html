@@ -2,6 +2,11 @@
 
 {% block title %}Detail Laporan #{{ laporan.id }}{% endblock %}
 
+{% block extra_css %}
+<!-- Leaflet.js CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+{% endblock %}
+
 {% block breadcrumb %}
     <li class="breadcrumb-item"><a href="{% url 'laporan_list' %}" class="text-decoration-none">Laporan</a></li>
     <li class="breadcrumb-item active" aria-current="page">Detail #{{ laporan.id }}</li>
@@ -96,6 +101,29 @@
                     <div class="col-12 mt-3">
                         <h6 class="font-weight-bold text-dark mb-2">Kendala di Lapangan:</h6>
                         <div class="p-3 bg-light rounded text-dark" style="font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap;">{{ laporan.kendala|default:"- Tidak ada kendala -" }}</div>
+                    </div>
+                    
+                    <!-- Titik Koordinat Lapangan -->
+                    <div class="col-12 mt-3 border-top pt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="font-weight-bold text-dark mb-0"><i class="fa-solid fa-map-location-dot text-primary me-2"></i> Titik Koordinat Dokumentasi Lapangan:</h6>
+                            {% if laporan.latitude and laporan.longitude %}
+                                <a href="https://www.google.com/maps/search/?api=1&query={{ laporan.latitude }},{{ laporan.longitude }}" target="_blank" class="btn btn-sm btn-outline-primary" style="font-size: 0.8rem; border-radius: 6px;">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Buka di Google Maps
+                                </a>
+                            {% endif %}
+                        </div>
+                        
+                        {% if laporan.latitude and laporan.longitude %}
+                            <div class="mb-2 text-dark" style="font-size: 0.9rem;">
+                                <strong>Latitude:</strong> <code>{{ laporan.latitude }}</code> &nbsp;|&nbsp; <strong>Longitude:</strong> <code>{{ laporan.longitude }}</code>
+                            </div>
+                            <div id="map-detail" style="height: 250px; border-radius: 8px; border: 1px solid #dee2e6;" class="shadow-sm mb-2"></div>
+                        {% else %}
+                            <div class="p-3 bg-light rounded text-muted" style="font-size: 0.9rem;">
+                                <i class="fa-solid fa-circle-info me-1"></i> Titik koordinat lokasi tidak dicantumkan pada laporan ini.
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -212,6 +240,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Leaflet.js JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
     function checkReject() {
         const cat = document.getElementById('catatan_revisi').value.trim();
@@ -221,5 +251,24 @@
         }
         return confirm('Apakah Anda yakin ingin menolak laporan ini dan meminta pengawas melakukan revisi?');
     }
+
+    {% if laporan.latitude and laporan.longitude %}
+    document.addEventListener("DOMContentLoaded", function() {
+        const lat = parseFloat("{{ laporan.latitude }}");
+        const lng = parseFloat("{{ laporan.longitude }}");
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+            const map = L.map('map-detail').setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            
+            L.marker([lat, lng]).addTo(map)
+                .bindPopup('<b>Lokasi Dokumentasi Lapangan</b><br>{{ laporan.kegiatan.judul_kegiatan|escapejs }} ({{ laporan.bulan_laporan }})')
+                .openPopup();
+        }
+    });
+    {% endif %}
 </script>
 {% endblock %}

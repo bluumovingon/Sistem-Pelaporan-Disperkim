@@ -111,7 +111,12 @@
                                     </td>
                                 {% endif %}
                                 <td>
-                                    <div class="font-weight-bold text-dark">{{ lap.kegiatan.judul_kegiatan }}</div>
+                                    <div class="font-weight-bold text-dark">
+                                        {{ lap.kegiatan.judul_kegiatan }}
+                                        {% if lap.latitude and lap.longitude %}
+                                            <span class="badge bg-info-subtle text-info-emphasis ms-1" style="font-size: 0.7rem;" title="Titik Koordinat: {{ lap.latitude }}, {{ lap.longitude }}"><i class="fa-solid fa-location-dot text-primary"></i> Map</span>
+                                        {% endif %}
+                                    </div>
                                     <small class="text-muted" style="font-size: 0.75rem;">Tahun Anggaran: {{ lap.kegiatan.tahun }}</small>
                                 </td>
                                 <td>{{ lap.bulan_laporan }}</td>

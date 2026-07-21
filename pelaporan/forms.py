@@ -4,12 +4,14 @@ from pelaporan.models import User, Kegiatan, Laporan, Dokumentasi
 class LaporanForm(forms.ModelForm):
     class Meta:
         model = Laporan
-        fields = ['kegiatan', 'bulan_laporan', 'tahapan_pelaksanaan', 'kendala']
+        fields = ['kegiatan', 'bulan_laporan', 'tahapan_pelaksanaan', 'kendala', 'latitude', 'longitude']
         widgets = {
             'kegiatan': forms.Select(attrs={'class': 'form-select select2-enable', 'placeholder': 'Pilih Kegiatan'}),
             'bulan_laporan': forms.Select(attrs={'class': 'form-select', 'placeholder': 'Pilih Bulan'}),
             'tahapan_pelaksanaan': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Jelaskan progres/tahapan pelaksanaan kegiatan...'}),
             'kendala': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Sebutkan kendala yang dihadapi (bila ada)...'}),
+            'latitude': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: -0.414000', 'step': 'any'}),
+            'longitude': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: 116.991000', 'step': 'any'}),
         }
 
 

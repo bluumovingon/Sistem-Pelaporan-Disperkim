@@ -54,6 +54,8 @@ erDiagram
         string kendala
         string status "draft | diajukan | terverifikasi | perlu_revisi"
         string catatan_revisi
+        float latitude
+        float longitude
         datetime created_at
         datetime updated_at
     }
@@ -233,6 +235,8 @@ flowchart TD
 | `kendala` | Text | Kendala lapangan (jika ada) |
 | `status` | VarChar(20) | Enum: `draft`, `diajukan`, `terverifikasi`, `perlu_revisi` |
 | `catatan_revisi` | Text | Catatan dari admin jika perlu revisi |
+| `latitude` | Float (Nullable) | Koordinat lintang dokumentasi lapangan |
+| `longitude` | Float (Nullable) | Koordinat bujur dokumentasi lapangan |
 | `created_at` | DateTime | Waktu pembuatan |
 | `updated_at` | DateTime | Waktu update terakhir |
 
