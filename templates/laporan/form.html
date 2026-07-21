@@ -172,7 +172,10 @@
     const filesInput = document.getElementById('filesInput');
     const filePreviews = document.getElementById('filePreviews');
 
-    // Drag events
+    // Container antrean file DataTransfer untuk mengelola file terunggah
+    let selectedFilesDataTransfer = new DataTransfer();
+
+    // Drag and drop events
     ['dragenter', 'dragover'].forEach(eventName => {
         uploadContainer.addEventListener(eventName, (e) => {
             e.preventDefault();
@@ -189,26 +192,25 @@
 
     uploadContainer.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
-        const files = dt.files;
-        filesInput.files = files;
-        handleFiles(files);
+        addFilesToQueue(dt.files);
     });
 
     filesInput.addEventListener('change', (e) => {
-        handleFiles(filesInput.files);
+        addFilesToQueue(filesInput.files);
+        // Reset file input agar pengguna bisa memilih kembali file yang sama jika dihapus
+        filesInput.value = '';
     });
 
-    function handleFiles(files) {
-        filePreviews.innerHTML = ''; // reset preview
-        
-        if (files.length === 0) return;
+    function addFilesToQueue(newFiles) {
+        if (!newFiles || newFiles.length === 0) return;
         
         const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
         const maxSizeBytes = 5 * 1024 * 1024; // 5MB
         let hasError = false;
         let errorMessage = '';
+        const validNewFiles = [];
         
-        Array.from(files).forEach((file) => {
+        Array.from(newFiles).forEach((file) => {
             const fileName = file.name;
             const fileSizeMB = file.size / 1024 / 1024;
             const fileExt = fileName.split('.').pop().toLowerCase();
@@ -216,20 +218,63 @@
             if (!allowedExtensions.includes(fileExt)) {
                 hasError = true;
                 errorMessage += `- Berkas "${fileName}" memiliki format yang salah (.${fileExt}). Hanya diperbolehkan format foto (JPG, JPEG, PNG) atau dokumen PDF.\n`;
-            }
-            
-            if (file.size > maxSizeBytes) {
+            } else if (file.size > maxSizeBytes) {
                 hasError = true;
                 errorMessage += `- Berkas "${fileName}" terlalu besar (${fileSizeMB.toFixed(2)} MB). Maksimal ukuran file adalah 5 MB.\n`;
+            } else {
+                validNewFiles.push(file);
             }
         });
         
         if (hasError) {
-            // Tampilkan pesan peringatan besar & terperinci
-            alert("⚠️ BERKAS TIDAK VALID\n\n" + errorMessage + "\nSilakan pilih ulang berkas yang sesuai ketentuan.");
-            filesInput.value = ''; // Reset input agar tidak terunggah berkas rusak
-            return;
+            alert("⚠️ BERKAS TIDAK VALID\n\n" + errorMessage + "\nSilakan pilih ulang berkas yang memenuhi syarat.");
         }
+        
+        // Tambahkan file valid ke antrean
+        validNewFiles.forEach(file => {
+            selectedFilesDataTransfer.items.add(file);
+        });
+        
+        // Update input file elemen
+        filesInput.files = selectedFilesDataTransfer.files;
+        renderFilePreviews();
+    }
+
+    function removeFileFromQueue(indexToRemove) {
+        const newDT = new DataTransfer();
+        const currentFiles = selectedFilesDataTransfer.files;
+        
+        // Simpan nilai deskripsi yang sudah diketik agar tidak hilang
+        const currentDescriptions = Array.from(document.querySelectorAll('input[name="file_descriptions"]')).map(input => input.value);
+        
+        for (let i = 0; i < currentFiles.length; i++) {
+            if (i !== indexToRemove) {
+                newDT.items.add(currentFiles[i]);
+            }
+        }
+        
+        selectedFilesDataTransfer = newDT;
+        filesInput.files = selectedFilesDataTransfer.files;
+        
+        // Re-render preview
+        renderFilePreviews();
+        
+        // Kembalikan deskripsi yang tersisa
+        const newDescriptionInputs = document.querySelectorAll('input[name="file_descriptions"]');
+        let newIdx = 0;
+        for (let i = 0; i < currentDescriptions.length; i++) {
+            if (i !== indexToRemove && newDescriptionInputs[newIdx]) {
+                newDescriptionInputs[newIdx].value = currentDescriptions[i];
+                newIdx++;
+            }
+        }
+    }
+
+    function renderFilePreviews() {
+        filePreviews.innerHTML = '';
+        const files = selectedFilesDataTransfer.files;
+        
+        if (files.length === 0) return;
         
         Array.from(files).forEach((file, index) => {
             const isImage = file.type.startsWith('image/');
@@ -242,27 +287,29 @@
             
             let previewHTML = '';
             if (isImage) {
-                // Read and preview image
                 const reader = new FileReader();
                 const imgId = `preview-img-${index}`;
                 
                 reader.onload = function(e) {
-                    document.getElementById(imgId).src = e.target.result;
+                    const imgEl = document.getElementById(imgId);
+                    if (imgEl) imgEl.src = e.target.result;
                 }
                 reader.readAsDataURL(file);
                 
                 previewHTML = `<img id="${imgId}" src="" class="card-img-top mb-2" style="height: 120px; object-fit: cover; border-radius: 6px;">`;
             } else {
-                // Document file icon
                 previewHTML = `<div class="d-flex align-items-center justify-content-center bg-light text-muted mb-2" style="height: 120px; border-radius: 6px; font-size: 2.5rem;">
                                     <i class="fa-solid fa-file-pdf text-danger"></i>
                                </div>`;
             }
             
             card.innerHTML = `
+                <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute top-0 end-0 m-2 shadow" style="width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; z-index: 10;" title="Hapus berkas pilihan ini" onclick="removeFileFromQueue(${index})">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
                 ${previewHTML}
                 <div class="card-body p-0">
-                    <span class="d-block text-truncate font-weight-bold text-dark" style="font-size: 0.85rem;" title="${file.name}">${file.name}</span>
+                    <span class="d-block text-truncate font-weight-bold text-dark pe-4" style="font-size: 0.85rem;" title="${file.name}">${file.name}</span>
                     <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">Ukuran: ${(file.size / 1024 / 1024).toFixed(2)} MB</small>
                     
                     <input type="text" name="file_descriptions" class="form-control form-control-sm" placeholder="Keterangan singkat berkas..." style="font-size: 0.8rem; padding: 6px;">
